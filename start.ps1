@@ -5,6 +5,8 @@
 param(
     [switch]$NoFrontend,
     [switch]$NoBackend,
+    [switch]$ForceSetup,
+    [switch]$SkipSetup,
     [Alias("h")]
     [switch]$Help
 )
@@ -14,6 +16,7 @@ $ErrorActionPreference = "Stop"
 $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
 $FRONTEND_DIR = Join-Path $SCRIPT_DIR "frontend"
 $PY_DIR = Join-Path $SCRIPT_DIR "python"
+$FRONTEND_URL = "http://localhost:1420"
 
 $BACKEND_PROCESS = $null
 $FRONTEND_PROCESS = $null
@@ -39,7 +42,57 @@ function Test-CommandExists($command) {
     $null -ne (Get-Command $command -ErrorAction SilentlyContinue)
 }
 
+function Add-PathIfExists($path) {
+    if (-not (Test-Path $path)) {
+        return $false
+    }
+
+    if ($env:Path -notlike "*$path*") {
+        $env:Path = "$path;$env:Path"
+    }
+
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    if ($null -eq $userPath) { $userPath = "" }
+    if ($userPath -notlike "*$path*") {
+        [Environment]::SetEnvironmentVariable(
+            "Path",
+            ($userPath.TrimEnd(';') + ";$path"),
+            "User"
+        )
+    }
+
+    return $true
+}
+
+function Restore-ToolPath($toolName) {
+    if ($toolName -eq "bun") {
+        $candidates = @(
+            "D:\Tools\bun\bin",
+            "$env:USERPROFILE\.bun\bin"
+        )
+    } elseif ($toolName -eq "uv") {
+        $candidates = @(
+            "$env:USERPROFILE\.cargo\bin",
+            "$env:USERPROFILE\.local\bin",
+            "$env:LOCALAPPDATA\Programs\uv",
+            "D:\Tools\uv\bin"
+        )
+    } else {
+        return
+    }
+
+    foreach ($candidate in $candidates) {
+        if (Add-PathIfExists $candidate) {
+            if (Test-CommandExists $toolName) {
+                break
+            }
+        }
+    }
+}
+
 function Ensure-Tool($toolName) {
+    Restore-ToolPath $toolName
+
     if (Test-CommandExists $toolName) {
         try {
             $version = & $toolName --version 2>$null | Select-Object -First 1
@@ -155,6 +208,41 @@ function Compile {
     }
 }
 
+function Should-SetupBackend {
+    if ($ForceSetup) {
+        return $true
+    }
+
+    $venvPython = Join-Path $PY_DIR ".venv\Scripts\python.exe"
+    return -not (Test-Path $venvPython)
+}
+
+function Should-SetupFrontend {
+    if ($ForceSetup) {
+        return $true
+    }
+
+    $nodeModules = Join-Path $FRONTEND_DIR "node_modules"
+    return -not (Test-Path $nodeModules)
+}
+
+function Ensure-DependenciesReady {
+    if ($SkipSetup) {
+        Write-Warn "Skipping dependency setup by request (--SkipSetup)"
+        return
+    }
+
+    $needBackendSetup = (-not $NoBackend) -and (Should-SetupBackend)
+    $needFrontendSetup = (-not $NoFrontend) -and (Should-SetupFrontend)
+
+    if ($needBackendSetup -or $needFrontendSetup) {
+        Write-Info "First run or missing dependencies detected; running setup..."
+        Compile
+    } else {
+        Write-Success "Dependencies already ready; skipping setup"
+    }
+}
+
 function Start-Backend {
     if (-not (Test-Path $PY_DIR)) {
         Write-Warn "Backend directory not found; skipping backend start"
@@ -166,6 +254,7 @@ function Start-Backend {
     try {
         # Set debug mode for local development
         $env:AGENT_DEBUG_MODE = "true"
+        $env:API_HOST = "127.0.0.1"
         & uv run python -m valuecell.server.main
     } catch {
         Write-Err "Failed to start backend: $_"
@@ -219,6 +308,44 @@ function Start-Frontend {
     }
 }
 
+function Open-FrontendInBrowser {
+    try {
+        Write-Info "Opening browser: $FRONTEND_URL"
+        Start-Process $FRONTEND_URL | Out-Null
+    } catch {
+        Write-Warn "Unable to open browser automatically: $_"
+    }
+}
+
+function Ensure-DesktopShortcut {
+    try {
+        $desktopDir = [Environment]::GetFolderPath("Desktop")
+        if (-not $desktopDir) {
+            Write-Warn "Desktop path not found. Skipping shortcut creation."
+            return
+        }
+
+        $shortcutPath = Join-Path $desktopDir "ValueCell Dev.lnk"
+        $iconPath = Join-Path $SCRIPT_DIR "frontend\src-tauri\icons\icon.ico"
+
+        $wshShell = New-Object -ComObject WScript.Shell
+        $shortcut = $wshShell.CreateShortcut($shortcutPath)
+        $shortcut.TargetPath = "powershell.exe"
+        $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$SCRIPT_DIR\start.ps1`""
+        $shortcut.WorkingDirectory = $SCRIPT_DIR
+        $shortcut.Description = "Start ValueCell and open browser"
+
+        if (Test-Path $iconPath) {
+            $shortcut.IconLocation = "$iconPath,0"
+        }
+
+        $shortcut.Save()
+        Write-Success "Desktop shortcut ready: $shortcutPath"
+    } catch {
+        Write-Warn "Failed to create desktop shortcut: $_"
+    }
+}
+
 function Cleanup {
     Write-Host ""
     Write-Info "Stopping services..."
@@ -259,6 +386,8 @@ Description:
 Options:
   -NoFrontend     Start backend only
   -NoBackend      Start frontend only
+    -ForceSetup     Force dependency setup (uv sync / bun install)
+    -SkipSetup      Skip dependency setup even if missing
   -Help, -h       Show this help message
 "@
 }
@@ -276,13 +405,17 @@ try {
     Ensure-Tool "bun"
     Ensure-Tool "uv"
 
-    # Compile/install dependencies
-    Compile
+    # Compile/install dependencies only when needed
+    Ensure-DependenciesReady
+
+    # Ensure desktop shortcut (Windows)
+    Ensure-DesktopShortcut
 
     # Start services based on flags
     if (-not $NoFrontend) {
         Start-Frontend
         Start-Sleep -Seconds 5  # Give frontend a moment to start
+        Open-FrontendInBrowser
     }
 
     if (-not $NoBackend) {

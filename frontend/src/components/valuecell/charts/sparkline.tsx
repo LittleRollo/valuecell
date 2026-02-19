@@ -68,8 +68,8 @@ function Sparkline({
         splitLine: {
           show: true,
           lineStyle: {
-            color: "rgba(174, 174, 174, 0.5)",
-            opacity: 0.3,
+            color: "#e5e7eb",
+            opacity: 0.6,
             type: "solid",
           },
         },
@@ -105,7 +105,7 @@ function Sparkline({
       ],
       tooltip: {
         trigger: "axis",
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        backgroundColor: "rgba(17, 24, 39, 0.88)",
         textStyle: {
           color: "#fff",
           fontSize: 12,
@@ -129,7 +129,7 @@ function Sparkline({
             <div style="font-weight: 500; font-size: 12px; margin-bottom: 8px; letter-spacing: -0.42px;">
               ${formatDate}, ${formatTime}
             </div>
-            <div style="font-weight: bold; font-size: 18px; font-family: 'SF Pro Display', sans-serif;">
+            <div style="font-weight: bold; font-size: 18px;">
               ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           `;

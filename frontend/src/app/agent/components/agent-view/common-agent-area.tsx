@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { type FC, memo, useCallback, useEffect, useState } from "react";
+import { type FC, memo, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Navigate,
@@ -48,9 +48,12 @@ const CommonAgentAreaContent: FC<CommonAgentAreaProps> = ({ agentName }) => {
     agentName: agentName ?? "",
   });
 
-  const conversationId = useSearchParams()[0].get("id") ?? "";
+  const [searchParams] = useSearchParams();
+  const conversationId = searchParams.get("id") ?? "";
   const navigate = useNavigate();
-  const inputValueFromLocation = useLocation().state?.inputValue;
+  const location = useLocation();
+  const inputValueFromLocation = location.state?.inputValue;
+  const autoSendTokenRef = useRef<string>("");
 
   // Use optimized hooks with built-in shallow comparison
   const { curConversation, curConversationId } = useCurrentConversation();
@@ -174,11 +177,24 @@ const CommonAgentAreaContent: FC<CommonAgentAreaProps> = ({ agentName }) => {
 
   useEffect(() => {
     if (inputValueFromLocation) {
+      const token = `${location.key}:${agentName}:${conversationId}:${inputValueFromLocation}`;
+      if (autoSendTokenRef.current === token) {
+        return;
+      }
+      autoSendTokenRef.current = token;
+
       sendMessage(inputValueFromLocation);
       // Clear the state after using it once to prevent re-triggering on page refresh
       navigate(".", { replace: true, state: {} });
     }
-  }, [inputValueFromLocation, navigate, sendMessage]);
+  }, [
+    inputValueFromLocation,
+    location.key,
+    agentName,
+    conversationId,
+    navigate,
+    sendMessage,
+  ]);
 
   const [inputValue, setInputValue] = useState<string>("");
   const { currentSection } = useMultiSection();

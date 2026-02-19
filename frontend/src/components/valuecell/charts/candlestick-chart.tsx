@@ -106,6 +106,7 @@ function CandlestickChart({
         xAxisIndex: 1,
         yAxisIndex: 1,
         data: volumes,
+        barMaxWidth: 8,
         itemStyle: {
           color: (params) => {
             const value = params.value as [number, number, number];
@@ -133,6 +134,10 @@ function CandlestickChart({
         boundaryGap: true,
         axisLine: { onZero: false },
         splitLine: { show: false },
+        axisLabel: {
+          color: "#6b7280",
+          fontSize: 11,
+        },
         min: "dataMin",
         max: "dataMax",
         axisPointer: { z: 100 },
@@ -142,7 +147,16 @@ function CandlestickChart({
     const yAxes: EChartsOption["yAxis"] = [
       {
         scale: true,
-        splitArea: { show: true },
+        axisLabel: {
+          color: "#6b7280",
+          fontSize: 11,
+        },
+        splitLine: {
+          lineStyle: {
+            color: "#e5e7eb",
+          },
+        },
+        splitArea: { show: false },
       },
     ];
 
@@ -185,13 +199,14 @@ function CandlestickChart({
         trigger: "axis",
         axisPointer: { type: "cross" },
         borderWidth: 1,
-        borderColor: "#ccc",
+        borderColor: "#e5e7eb",
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
         padding: 10,
-        textStyle: { color: "#000" },
+        textStyle: { color: "#111827" },
       },
       axisPointer: {
         link: [{ xAxisIndex: "all" }],
-        label: { backgroundColor: "#777" },
+        label: { backgroundColor: "#4b5563" },
       },
       grid: grids,
       xAxis: xAxes,

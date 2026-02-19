@@ -1,6 +1,5 @@
 import {
   useMutation,
-  useQueries,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -12,9 +11,12 @@ import type {
   CheckModelResult,
   MemoryItem,
   ModelProvider,
+  NewsDelivery,
+  NewsSubscription,
   ProviderDetail,
   ProviderModelInfo,
 } from "@/types/setting";
+import type { AgentInfo } from "@/types/agent";
 
 export const useGetMemoryList = () => {
   return useQuery({
@@ -38,6 +40,71 @@ export const useRemoveMemory = () => {
     },
   });
 };
+  export const useGetNewsSubscriptions = () => {
+    return useQuery({
+      queryKey: API_QUERY_KEYS.SETTING.newsSubscriptions,
+      queryFn: () =>
+        apiClient.get<ApiResponse<{ subscriptions: NewsSubscription[] }>>(
+          "/news/subscriptions",
+        ),
+      select: (data) => data.data.subscriptions,
+    });
+  };
+
+  export const useCreateNewsSubscription = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+      mutationFn: (params: {
+        name: string;
+        keywords: string[];
+        interval_minutes: number;
+        enabled: boolean;
+        realtime_tracking: boolean;
+      }) =>
+        apiClient.post<ApiResponse<NewsSubscription>>("/news/subscriptions", params),
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: API_QUERY_KEYS.SETTING.newsSubscriptions,
+        });
+      },
+    });
+  };
+
+  export const useDeleteNewsSubscription = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+      mutationFn: (subscriptionId: string) =>
+        apiClient.delete<ApiResponse<null>>(`/news/subscriptions/${subscriptionId}`),
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: API_QUERY_KEYS.SETTING.newsSubscriptions,
+        });
+      },
+    });
+  };
+
+  export const useDeliverNewsSubscription = () => {
+    return useMutation({
+      mutationFn: (subscriptionId: string) =>
+        apiClient.post<ApiResponse<NewsDelivery>>(
+          `/news/subscriptions/${subscriptionId}/deliver`,
+        ),
+    });
+  };
+
+  export const useGetHiddenAgents = () => {
+    return useQuery({
+      queryKey: API_QUERY_KEYS.SETTING.hiddenModules,
+      queryFn: () =>
+        apiClient.get<ApiResponse<{ agents: AgentInfo[] }>>(
+          "/agents/?enabled_only=false&include_hidden=true",
+        ),
+      select: (data) =>
+        data.data.agents.filter((agent) => agent.agent_metadata?.hidden === true),
+    });
+  };
 
 export const useGetModelProviders = () => {
   return useQuery({
@@ -185,59 +252,18 @@ export const useCheckModelAvailability = () => {
 };
 
 /**
- * Hook to get model providers sorted by API key availability.
- * Providers with API keys configured appear first.
+ * Hook to get model providers while preserving backend order.
  */
 export const useGetSortedModelProviders = () => {
   const { data: modelProviders = [], isLoading: isLoadingProviders } =
     useGetModelProviders();
 
-  const providerDetailsQueries = useQueries({
-    queries: modelProviders.map((p) => ({
-      queryKey: API_QUERY_KEYS.SETTING.modelProviderDetail([p.provider]),
-      queryFn: () =>
-        apiClient.get<ApiResponse<ProviderDetail>>(
-          `/models/providers/${p.provider}`,
-        ),
-      select: (data: ApiResponse<ProviderDetail>) => ({
-        provider: p.provider,
-        hasApiKey: !!data.data?.api_key,
-      }),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
-
-  const isLoadingDetails =
-    providerDetailsQueries.length > 0 &&
-    providerDetailsQueries.some((q) => q.isLoading);
-
-  const isLoading = isLoadingProviders || isLoadingDetails;
-
-  const sortedProviders = (() => {
-    if (isLoading) return [];
-
-    const apiKeyMap = new Map<string, boolean>();
-    for (const query of providerDetailsQueries) {
-      if (query.data) {
-        apiKeyMap.set(query.data.provider, query.data.hasApiKey);
-      }
-    }
-
-    return [...modelProviders].sort((a, b) => {
-      const aHasKey = apiKeyMap.get(a.provider) ?? false;
-      const bHasKey = apiKeyMap.get(b.provider) ?? false;
-      if (aHasKey && !bHasKey) return -1;
-      if (!aHasKey && bHasKey) return 1;
-      return 0;
-    });
-  })();
-
   const defaultProvider =
-    sortedProviders.length > 0 ? sortedProviders[0].provider : "";
+    modelProviders.length > 0 ? modelProviders[0].provider : "";
 
   return {
-    providers: sortedProviders,
+    providers: modelProviders,
     defaultProvider,
-    isLoading,
+    isLoading: isLoadingProviders,
   };
 };

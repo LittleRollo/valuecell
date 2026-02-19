@@ -1,31 +1,104 @@
-# ============================================
-# DeepSeek Provider Configuration
-# ============================================
+# DeepSeek Provider Configuration - Financial Analysis Optimized
+# Advantage: Strong reasoning capabilities (Reasoner) for quantitative modeling
 name: "DeepSeek"
 provider_type: "deepseek"
+enabled: true
 
-enabled: true # Default is true if not specified
-
+# ============================================
 # Connection Configuration
+# ============================================
 connection:
   base_url: "https://api.deepseek.com/v1"
   api_key_env: "DEEPSEEK_API_KEY"
 
-# Default model if none specified
+# ============================================
+# Model Configuration
+# ============================================
+# Default: DeepSeek Chat for balanced performance
 default_model: "deepseek-chat"
 
-# Model Parameters Defaults
+# Financial scenario optimized parameters (Enhanced reasoning precision)
 defaults:
-  temperature: 0.7
-  max_tokens: 8096
+  temperature: 0.1              # Financial analysis requires precision, minimize reasoning errors (original 0.7 reduced)
+  max_tokens: 8192              # Sufficient for detailed financial analysis and reasoning chains
+  top_p: 0.95
 
-# Available Models (commonly used)
+# ============================================
+# Available Models
+# ============================================
 models:
+  # General Financial Analysis (Default) 
   - id: "deepseek-chat"
     name: "DeepSeek Chat"
     context_length: 128000
-    description: "DeepSeek Chat model"
+    description: "Balanced conversational model - Suitable for general financial consulting, report interpretation, and routine market analysis with strong Chinese financial document understanding"
+    capabilities: [general_analysis, chinese_document, reasoning]
+    recommended_for:
+      - general_financial_consulting    # General investment consulting
+      - financial_report_reading        # Annual/quarterly report interpretation
+      - market_analysis                 # Routine market trend analysis
+      - chinese_financial_documents     # Chinese A-share reports and announcements
+      - client_qa                       # Client question answering
+
+  # ━━━━━━━━━ Complex Reasoning & Quantitative (Specialized) ━━━━━━━━━
   - id: "deepseek-reasoner"
     name: "DeepSeek Reasoner"
     context_length: 128000
-    description: "DeepSeek Reasoner model with enhanced reasoning capabilities"
+    description: "Reasoning-enhanced model - Exceptional for complex derivatives pricing, quantitative modeling, mathematical proofs, and multi-step financial logic with visible reasoning chains"
+    capabilities: [advanced_reasoning, mathematical_modeling, logic_chains, quantitative_analysis]
+    recommended_for:
+      - complex_derivatives_pricing     # Complex options and derivatives valuation
+      - quantitative_modeling           # Quantitative financial model development
+      - mathematical_proofs             # Financial formula derivation and verification
+      - multi_step_analysis             # Multi-step investment logic analysis
+      - risk_calculation                # VaR, CVaR, and risk metric calculations
+      - algorithmic_logic               # Algorithmic trading logic development
+      - reasoning_transparency          # Applications requiring visible reasoning steps
+
+# ============================================
+# Embedding Configuration (via OpenAI-compatible API)
+# ============================================
+# Note: DeepSeek does not provide native embedding API
+# Use SiliconFlow or OpenRouter for embeddings with DeepSeek models
+embedding:
+  fallback_provider: "siliconflow"    # Recommended: Use SiliconFlow for embeddings
+  fallback_model: "BAAI/bge-m3"       # Multilingual financial embedding
+
+# ============================================
+# Financial Analysis Presets
+# ============================================
+# Leveraging DeepSeek's reasoning capabilities
+financial_analysis_presets:
+  routine_market_analysis:
+    model: "deepseek-chat"            # Fast and cost-effective
+    temperature: 0.1
+    max_tokens: 4096
+    system_prompt: "You are a financial market analyst. Provide clear, accurate analysis of market trends, stock performance, and economic indicators. Be concise and data-driven."
+
+  complex_quantitative_modeling:
+    model: "deepseek-reasoner"        # Enhanced reasoning for math
+    temperature: 0.05                 # Very low for mathematical precision
+    max_tokens: 8192
+    reasoning_effort: "high"          # Enable detailed reasoning chains
+    system_prompt: "You are a quantitative finance specialist. Perform complex mathematical calculations for derivatives pricing, portfolio optimization, and risk metrics. Show your reasoning step-by-step and verify all calculations."
+
+  chinese_financial_report_analysis:
+    model: "deepseek-chat"            # Strong Chinese language capability
+    temperature: 0.1
+    max_tokens: 8192
+    system_prompt: "You are an expert in Chinese A-share market analysis. Analyze Chinese financial reports, regulatory announcements, and earnings calls with native-level understanding. Extract key metrics from Chinese accounting standards."
+
+  multi_step_investment_logic:
+    model: "deepseek-reasoner"        # Visible reasoning chains
+    temperature: 0.1
+    max_tokens: 4096
+    reasoning_effort: "medium"
+    system_prompt: "You are an investment logic analyzer. Break down complex investment decisions into clear reasoning steps. Evaluate multiple factors systematically and show your logical progression clearly."
+
+  mathematical_formula_derivation:
+    model: "deepseek-reasoner"        # Best for math
+    temperature: 0.0                  # Zero randomness for formulas
+    max_tokens: 4096
+    reasoning_effort: "high"
+    system_prompt: "You are a financial mathematician. Derive and explain complex financial formulas (Black-Scholes, Monte Carlo methods, etc.) step-by-step. Ensure mathematical rigor and correctness."
+

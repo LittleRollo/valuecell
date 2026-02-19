@@ -62,9 +62,10 @@ function MiniSparkline({
           type: "line",
           data: data,
           symbol: "none",
+          smooth: true,
           lineStyle: {
             color: color,
-            width: 1.5,
+            width: 2,
           },
           areaStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [

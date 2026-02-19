@@ -93,19 +93,11 @@ class PlanService:
         """Kick off asynchronous planning."""
 
         agent_name = (user_input.target_agent_name or "").strip()
-        is_passthrough = False
         if agent_name:
-            try:
-                is_passthrough = bool(
-                    self._agent_connections.is_planner_passthrough(agent_name)
-                )
-            except Exception:
-                is_passthrough = False
-            if is_passthrough:
-                # Directly create a simple one-task plan without invoking the LLM planner
-                return asyncio.create_task(
-                    self._create_passthrough_plan(user_input, thread_id)
-                )
+            # Explicit target agent means direct execution; skip planner LLM.
+            return asyncio.create_task(
+                self._create_passthrough_plan(user_input, thread_id)
+            )
 
         return asyncio.create_task(
             self._planner.create_plan(user_input, callback, thread_id)

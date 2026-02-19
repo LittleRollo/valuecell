@@ -4,7 +4,7 @@ import os
 from functools import lru_cache
 
 from valuecell.config.constants import PROJECT_ROOT
-from valuecell.utils.env import get_system_env_dir
+from valuecell.utils.db import resolve_default_data_dir
 
 
 def _get_project_root() -> str:
@@ -19,15 +19,16 @@ def _get_project_root() -> str:
 
 
 def _default_db_path() -> str:
-    """Get default database DSN under the system application directory.
+    """Get default database DSN under the application data directory.
 
-    Mirrors `.env` location so the SQLite file lives alongside user-level config:
-    - macOS: `~/Library/Application Support/ValueCell/valuecell.db`
-    - Linux: `~/.config/valuecell/valuecell.db`
-    - Windows: `%APPDATA%\ValueCell\valuecell.db`
+    Default locations:
+    - Windows: `D:/ValueCell/data/valuecell.db`
+    - macOS/Linux: system user config directory
+    - Any OS can override by setting `VALUECELL_DATA_DIR`
     """
-    system_dir = get_system_env_dir()
-    return f"sqlite:///{os.path.join(str(system_dir), 'valuecell.db')}"
+    data_dir = resolve_default_data_dir()
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return f"sqlite:///{os.path.join(str(data_dir), 'valuecell.db')}"
 
 
 class Settings:
@@ -41,7 +42,7 @@ class Settings:
         self.APP_ENVIRONMENT = os.getenv("APP_ENVIRONMENT", "development")
 
         # API Configuration
-        self.API_HOST = os.getenv("API_HOST", "0.0.0.0")
+        self.API_HOST = os.getenv("API_HOST", "127.0.0.1")
         self.API_PORT = int(os.getenv("API_PORT", "8000"))
         self.API_DEBUG = os.getenv("API_DEBUG", "false").lower() == "true"
 

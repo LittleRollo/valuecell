@@ -31,6 +31,8 @@ export const SETTING_QUERY_KEYS = {
   memoryList: ["memory"],
   modelProviders: ["model", "providers"],
   modelProviderDetail: queryKeyFn(["model", "detail"]),
+  newsSubscriptions: ["news", "subscriptions"],
+  hiddenModules: ["agent", "hidden"],
 } as const;
 
 const STRATEGY_QUERY_KEYS = {

@@ -5,6 +5,8 @@ import { COMPONENT_RENDERER_MAP } from "@/constants/agent";
 import { TimeUtils } from "@/lib/time";
 import type { TaskCardItem } from "@/types/conversation";
 
+const PROCESS_COMPONENT_TYPES = new Set(["tool_call", "reasoning"]);
+
 const AgentTaskCard: FC<TaskCardItem> = ({
   agent_name,
   update_time,
@@ -12,9 +14,16 @@ const AgentTaskCard: FC<TaskCardItem> = ({
 }) => {
   if (results.length === 0) return null;
 
-  const Component =
-    COMPONENT_RENDERER_MAP[results[0].data.payload?.component_type];
-  if (!Component) return null;
+  const displayResults = [...results]
+    .reverse()
+    .filter((result) => {
+      const componentType = result.data.payload?.component_type;
+      if (!componentType) return false;
+      return !PROCESS_COMPONENT_TYPES.has(componentType);
+    })
+    .slice(0, 3);
+
+  if (displayResults.length === 0) return null;
 
   return (
     <div className="flex size-full flex-col gap-4 rounded-lg border border-border bg-[linear-gradient(98deg,hsl(var(--card))_5.05%,hsl(var(--muted))_100%)] px-5 py-4">
@@ -31,17 +40,22 @@ const AgentTaskCard: FC<TaskCardItem> = ({
       </div>
 
       <div className="flex w-full flex-col gap-2">
-        {[...results]
-          .reverse()
-          .slice(0, 3)
-          .map((result) => (
+        {displayResults.map((result) => {
+          const componentType = result.data.payload?.component_type;
+          if (!componentType) return null;
+
+          const Component = COMPONENT_RENDERER_MAP[componentType];
+          if (!Component) return null;
+
+          return (
             <NavLink
               key={result.data.item_id}
               to={`/agent/${agent_name}?id=${result.data.conversation_id}`}
             >
               <Component content={result.data.payload.content} />
             </NavLink>
-          ))}
+          );
+        })}
       </div>
     </div>
   );

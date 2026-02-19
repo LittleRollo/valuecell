@@ -149,6 +149,24 @@
     }
   },
   "chat": {
+    "reasoning": {
+      "thinking": "思考中...",
+      "completed": "思考完了"
+    },
+    "report": {
+      "label": "分析レポート",
+      "defaultTitle": "分析レポート",
+      "createdAt": "作成日時",
+      "openHint": "クリックして完全版レポートを表示"
+    },
+    "tool": {
+      "step": "実行ステップ",
+      "unknownTool": "ツール呼び出し"
+    },
+    "process": {
+      "title": "実行プロセス",
+      "count": "{{count}} ステップ"
+    },
     "input": {
       "placeholder": "メッセージを入力..."
     },

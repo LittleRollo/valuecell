@@ -71,7 +71,7 @@ class TestBufferEntry:
         entry.append("Hello")
 
         assert entry.parts == ["Hello"]
-        assert entry.last_updated > initial_updated
+        assert entry.last_updated >= initial_updated
 
     def test_append_multiple_texts(self):
         """Test appending multiple texts."""

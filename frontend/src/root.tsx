@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
+import { useEffect, useState } from "react";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import "@/i18n";
 import AppSidebar from "@/components/valuecell/app/app-sidebar";
@@ -56,7 +57,21 @@ import { AutoUpdateCheck } from "@/components/valuecell/app/auto-update-check";
 import { BackendHealthCheck } from "@/components/valuecell/app/backend-health-check";
 import { TrackerProvider } from "./provider/tracker-provider";
 
+const STARTUP_SPLASH_DURATION_MS = 3000;
+
 export default function Root() {
+  const [isStartupSplashVisible, setIsStartupSplashVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setIsStartupSplashVisible(false);
+    }, STARTUP_SPLASH_DURATION_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
@@ -70,6 +85,15 @@ export default function Root() {
           <TrackerProvider>
             <SidebarProvider>
               <div className="fixed flex size-full overflow-hidden">
+                {isStartupSplashVisible && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+                    <div className="flex flex-col items-center gap-3">
+                      <img src="/logo.svg" alt="ValueCell" className="size-12" />
+                      <p className="font-semibold text-foreground text-sm">ValueCell</p>
+                    </div>
+                  </div>
+                )}
+
                 <AppSidebar />
 
                 <main

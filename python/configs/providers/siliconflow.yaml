@@ -1,70 +1,114 @@
-# ============================================
-# SiliconFlow Provider Configuration
-# ============================================
-name: "SiliconFlow"
-provider_type: "siliconflow"
+# SiliconFlow Configuration - Financial Analysis Optimized
+name: SiliconFlow
+provider_type: siliconflow
+enabled: true
 
-enabled: true # Default is true if not specified
-
-# Connection Configuration
 connection:
-  base_url: "https://api.siliconflow.cn/v1" # China domestic server
-  api_key_env: "SILICONFLOW_API_KEY"
+  base_url: https://api.siliconflow.cn/v1
+  api_key_env: SILICONFLOW_API_KEY
 
-# Default model if none specified
-default_model: "deepseek-ai/DeepSeek-V3.1-Terminus"
+# Default model for financial analysis: DeepSeek-V3.1-Terminus (Reasoning-enhanced, suitable for data analysis)
+default_model: deepseek-ai/DeepSeek-V3.1-Terminus
 
-# Model Parameters Defaults
+# Financial scenario optimized parameters (Low temperature reduces hallucination, high token count for long financial reports)
 defaults:
-  temperature: 0.7
-  max_tokens: 4096
+  temperature: 0.1              # Financial analysis requires precision, reduce randomness (original 0.7 was too high)
+  max_tokens: 8192              # Financial report analysis requires longer output (original 4096 may be insufficient)
+  top_p: 0.95
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
 
-# Available Models (commonly used)
+# Model inventory categorized
 models:
-  - id: "deepseek-ai/DeepSeek-V3.1-Terminus"
-    name: "DeepSeek V3.1 Terminus"
+
+  # Financial Analysis Dedicated (Recommended) 
+  - id: deepseek-ai/DeepSeek-V3.1-Terminus
+    name: DeepSeek V3.1 Terminus
+    description: Primary choice for financial analysis - Reasoning-enhanced version, suitable for stock analysis, financial report interpretation, and risk assessment
     context_length: 160000
-  
-  - id: "Qwen/Qwen3-235B-A22B-Thinking-2507"
-    name: "Qwen 3.235B A22B Thinking 2507"
-    context_length: 256000
+    capabilities: [financial_analysis, reasoning, coding]
+    recommended_for:
+      - stock_analysis                # Stock technical analysis
+      - financial_report              # Financial report interpretation
+      - risk_assessment               # Risk evaluation
+      - data_extraction               # Financial data extraction
 
-  - id: "moonshotai/Kimi-K2-Instruct-0905"
-    name: "Kimi K2 Instruct 0905"
+  - id: Qwen/Qwen3-235B-A22B-Thinking-2507
+    name: Qwen 3 235B Thinking
+    description: Specialized for complex reasoning - Suitable for multi-step financial modeling, derivatives pricing, and complex logic (slower response)
     context_length: 256000
-  
-  - id: "zai-org/GLM-4.5"
-    name: "GLM-4.5"
-    context_length: 128000
-  
-  - id: "inclusionAI/Ring-1T"
-    name: "Ring 1T"
-    context_length: 128000
+    capabilities: [complex_reasoning, mathematical_modeling]
+    recommended_for:
+      - complex_derivatives           # Complex derivatives analysis
+      - portfolio_optimization        # Portfolio optimization
+      - multi_step_analysis           # Multi-step analytical tasks
 
-# ============================================
-# Embedding Models Configuration
-# ============================================
-# SiliconFlow provides embedding models
+  # Long Document Processing (Ultra-long financial reports) 
+  - id: moonshotai/Kimi-K2-Instruct-0905
+    name: Kimi K2 Instruct
+    description: Preferred for ultra-long context - Suitable for annual reports, prospectuses, and other lengthy documents (256k context)
+    context_length: 256000
+    capabilities: [long_context, document_analysis]
+    recommended_for:
+      - annual_report                 # Full annual report analysis
+      - prospectus                    # Prospectus review
+      - legal_document                # Legal document review
+
+  # General Financial Assistant 
+  - id: zai-org/GLM-4.5
+    name: GLM-4.5
+    description: General financial Q&A - Balance between speed and quality, suitable for real-time customer service and quick queries
+    context_length: 128000
+    capabilities: [general_qa, tool_use]
+    recommended_for:
+      - quick_query                   # Quick information retrieval
+      - customer_service              # Customer service scenarios
+      - general_consulting            # General financial consulting
+
+  - id: inclusionAI/Ring-1T
+    name: Ring 1T
+    description: Specialized for economic research - Suitable for macroeconomic analysis and industry research
+    context_length: 128000
+    capabilities: [economic_analysis, research]
+    recommended_for:
+      - macro_analysis                # Macroeconomic analysis
+      - industry_research             # Industry sector research
+
+# Vector embedding configuration (Financial document retrieval)
 embedding:
-  # Default embedding model
-  default_model: "Qwen/Qwen3-Embedding-4B"
-  
-  # Default parameters
+  default_model: BAAI/bge-m3      # Changed to BGE-M3, better performance in financial domain, supports multilingual
   defaults:
-    dimensions: 2560
-    encoding_format: "float"
-  
-  # Available embedding models
-  models:
-  
-    - id: "Qwen/Qwen3-Embedding-4B"
-      name: "Qwen3 Embedding 4B"
-      dimensions: 2560
-      max_input: 32768
-      description: "Qwen3 Embedding Model"
+    dimensions: 1024              # Standard dimension for BGE-M3
+    encoding_format: float
+    max_input: 8192
 
-    - id: "BAAI/bge-m3"
-      name: "BGE M3"
+  models:
+    - id: BAAI/bge-m3
+      name: BGE M3
       dimensions: 1024
       max_input: 8192
-      description: "BGE Free Vector Embedding Model"
+      description: Preferred for financial document retrieval - Supports Chinese-English mixed content, suitable for financial reports and announcements
+      capabilities: [multilingual, financial_domain]
+    - id: Qwen/Qwen3-Embedding-4B
+      name: Qwen3 Embedding 4B
+      dimensions: 2560
+      max_input: 32768
+      description: High-precision semantic retrieval - Suitable for fine-grained financial entity recognition
+
+# Recommended configuration for financial analysis scenarios
+financial_analysis_presets:
+  stock_research:
+    model: deepseek-ai/DeepSeek-V3.1-Terminus
+    temperature: 0.1
+    max_tokens: 4096
+    system_prompt: "You are a professional financial analyst. Strictly base your analysis on data and objective facts. Do not fabricate information."
+  annual_report_analysis:
+    model: moonshotai/Kimi-K2-Instruct-0905  # Long context for lengthy reports
+    temperature: 0.1
+    max_tokens: 8192
+
+  risk_assessment:
+    model: Qwen/Qwen3-235B-A22B-Thinking-2507  # Complex reasoning capability
+    temperature: 0.05  # Extremely low temperature for maximum rigor
+    max_tokens: 4096
+

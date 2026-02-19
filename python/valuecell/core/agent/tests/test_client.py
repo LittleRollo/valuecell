@@ -95,7 +95,7 @@ class TestAgentClient:
             await client._setup_client()
 
             # Verify httpx client was created
-            mock_httpx_client.assert_called_once_with(timeout=30)
+            mock_httpx_client.assert_called_once_with(timeout=30, trust_env=False)
 
             # Verify card resolver was created and called
             mock_card_resolver_class.assert_called_once_with(

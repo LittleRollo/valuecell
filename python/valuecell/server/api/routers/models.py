@@ -2,10 +2,15 @@
 
 import os
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
 import yaml
 from fastapi import APIRouter, HTTPException, Query
+
+try:
+    from ruamel.yaml import YAML
+except Exception:  # pragma: no cover - optional dependency fallback
+    YAML = None
 
 from valuecell.config.constants import CONFIG_DIR
 from valuecell.config.loader import get_config_loader
@@ -87,10 +92,24 @@ def create_models_router() -> APIRouter:
     def _load_yaml(path: Path) -> dict:
         if not path.exists():
             return {}
+        if YAML is not None:
+            yaml_rt = YAML(typ="rt")
+            yaml_rt.preserve_quotes = True
+            with open(path, "r", encoding="utf-8") as f:
+                data: Any = yaml_rt.load(f)
+            return data or {}
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
 
     def _write_yaml(path: Path, data: dict) -> None:
+        if YAML is not None:
+            yaml_rt = YAML(typ="rt")
+            yaml_rt.preserve_quotes = True
+            yaml_rt.indent(mapping=2, sequence=4, offset=2)
+            yaml_rt.width = 4096
+            with open(path, "w", encoding="utf-8") as f:
+                yaml_rt.dump(data, f)
+            return
         with open(path, "w", encoding="utf-8") as f:
             yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
 
@@ -192,7 +211,8 @@ def create_models_router() -> APIRouter:
                             ProviderModelEntry(model_id=mid, model_name=name)
                         )
             detail = ProviderDetailData(
-                api_key=cfg.api_key,
+                api_key=None,
+                has_api_key=bool(cfg.api_key),
                 base_url=cfg.base_url,
                 is_default=(cfg.name == manager.primary_provider),
                 default_model_id=cfg.default_model,
@@ -280,7 +300,8 @@ def create_models_router() -> APIRouter:
             ]
 
             detail = ProviderDetailData(
-                api_key=cfg.api_key,
+                api_key=None,
+                has_api_key=bool(cfg.api_key),
                 base_url=cfg.base_url,
                 is_default=(cfg.name == manager.primary_provider),
                 default_model_id=cfg.default_model,
@@ -468,7 +489,8 @@ def create_models_router() -> APIRouter:
                 if isinstance(m, dict)
             ]
             detail = ProviderDetailData(
-                api_key=cfg.api_key,
+                api_key=None,
+                has_api_key=bool(cfg.api_key),
                 base_url=cfg.base_url,
                 is_default=(cfg.name == manager.primary_provider),
                 default_model_id=cfg.default_model,

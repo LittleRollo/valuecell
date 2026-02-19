@@ -155,6 +155,10 @@
     }
   }
 
+  .brand-gradient-bg {
+    background-image: linear-gradient(to bottom right, #3a88ff, #ff6699);
+  }
+
   .scroll-container {
     overflow-x: clip;
     overflow-y: hidden;

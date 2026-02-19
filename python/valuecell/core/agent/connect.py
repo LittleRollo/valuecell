@@ -1,11 +1,16 @@
 import asyncio
 import json
+import socket
+from contextlib import suppress
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 from typing import Any, Dict, List, Optional, Type
 
+import httpx
+from a2a.client import A2ACardResolver
 from a2a.types import AgentCard
 from loguru import logger
 
@@ -14,9 +19,63 @@ from valuecell.core.agent.client import AgentClient
 from valuecell.core.agent.decorator import create_wrapped_agent
 from valuecell.core.agent.listener import NotificationListener
 from valuecell.core.types import BaseAgent, NotificationCallbackType
-from valuecell.utils import get_next_available_port
+from valuecell.utils import get_next_available_port, parse_host_port
 
 AGENT_METADATA_CLASS_KEY = "local_agent_class"
+
+AGENT_ALIAS_KEYWORDS: Dict[str, tuple[str, ...]] = {
+    "NewsAgent": (
+        "news",
+        "breakingnews",
+        "financialnews",
+        "newspush",
+        "新闻",
+        "资讯",
+        "快讯",
+        "财经资讯",
+        "财经资讯分析",
+        "财经资讯分析专家",
+    ),
+    "ResearchAgent": (
+        "research",
+        "investmentresearch",
+        "stockresearch",
+        "fundamentalanalysis",
+        "研究",
+        "投研",
+        "个股分析",
+        "公司分析",
+        "基本面",
+        "研报",
+    ),
+}
+
+AGENT_EXPLICIT_ALIASES: Dict[str, str] = {
+    "investmentstrategyagent": "PromptBasedStrategyAgent",
+    "strategyagent": "PromptBasedStrategyAgent",
+    "promptstrategyagent": "PromptBasedStrategyAgent",
+    "promptbasedstrategyagent": "PromptBasedStrategyAgent",
+    "gridstrategyagent": "GridStrategyAgent",
+    "financialanalystagent": "ResearchAgent",
+    "fundamentalsanalystagent": "ResearchAgent",
+    "fundamentalanalystagent": "ResearchAgent",
+    "valuationanalystagent": "ResearchAgent",
+    "technicalanalystagent": "ResearchAgent",
+    "sentimentanalystagent": "NewsAgent",
+}
+
+
+def _format_exception_causes(exc: BaseException, *, limit: int = 5) -> str:
+    """Build a compact exception chain string for diagnostics."""
+    parts: list[str] = []
+    current: BaseException | None = exc
+    depth = 0
+    while current is not None and depth < limit:
+        text = str(current).strip() or current.__class__.__name__
+        parts.append(text)
+        current = current.__cause__
+        depth += 1
+    return " <- ".join(parts)
 
 
 @dataclass
@@ -75,6 +134,69 @@ _LOCAL_AGENT_CLASS_CACHE: Dict[str, Type[Any]] = {}
 # better control and avoids unbounded thread creation when many imports are
 # requested concurrently.
 executor = ThreadPoolExecutor(max_workers=4)
+
+
+def _is_url_port_in_use(url: Optional[str]) -> bool:
+    """Return True if the host:port from URL is currently occupied.
+
+    This is used to avoid launching an in-process local runtime when another
+    process is already bound to the same configured endpoint.
+    """
+    if not url:
+        return False
+
+    try:
+        host, port = parse_host_port(url, default_scheme="http")
+    except Exception:
+        return False
+
+    try:
+        with socket.create_connection((host, port), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
+def _remap_url_to_available_port(url: str) -> str:
+    """Return a URL remapped to an available port on the same host/scheme."""
+    parsed = urlparse(url)
+    host, port = parse_host_port(url, default_scheme="http")
+    next_port = get_next_available_port(port + 1)
+
+    netloc = f"{host}:{next_port}"
+    if parsed.username:
+        auth = parsed.username
+        if parsed.password:
+            auth = f"{auth}:{parsed.password}"
+        netloc = f"{auth}@{netloc}"
+
+    return urlunparse(
+        (
+            parsed.scheme or "http",
+            netloc,
+            parsed.path or "/",
+            parsed.params,
+            parsed.query,
+            parsed.fragment,
+        )
+    )
+
+
+async def _can_resolve_agent_card_url(url: str) -> bool:
+    """Return whether the URL looks like a reachable A2A agent endpoint."""
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    is_loopback = host in {"localhost", "127.0.0.1", "::1"}
+    client = httpx.AsyncClient(timeout=2.0, trust_env=not is_loopback)
+    try:
+        resolver = A2ACardResolver(client, url)
+        await resolver.get_agent_card()
+        return True
+    except Exception:
+        return False
+    finally:
+        with suppress(Exception):
+            await client.aclose()
 
 
 def _resolve_local_agent_class_sync(spec: str) -> Optional[Type[Any]]:
@@ -223,6 +345,89 @@ class RemoteConnections:
             self._agent_locks[agent_name] = asyncio.Lock()
         return self._agent_locks[agent_name]
 
+    @staticmethod
+    def _normalize_agent_name(name: str) -> str:
+        return "".join(ch.lower() for ch in (name or "") if ch.isalnum())
+
+    def _resolve_existing_agent_name(self, agent_name: str) -> str:
+        """Resolve user-provided agent aliases to configured agent names.
+
+        Examples:
+        - news_agent -> NewsAgent
+        - research_agent -> ResearchAgent
+        """
+        self._ensure_remote_contexts_loaded()
+
+        if agent_name in self._contexts:
+            return agent_name
+
+        normalized = self._normalize_agent_name(agent_name)
+        if not normalized:
+            raise ValueError(
+                f"Agent '{agent_name}' not found (neither local nor remote config)"
+            )
+
+        explicit_target = AGENT_EXPLICIT_ALIASES.get(normalized)
+        if explicit_target and explicit_target in self._contexts:
+            logger.info(
+                "Resolved agent alias by explicit map '{}' -> '{}'",
+                agent_name,
+                explicit_target,
+            )
+            return explicit_target
+
+        candidates = {normalized}
+        if normalized.endswith("agent"):
+            candidates.add(normalized.removesuffix("agent"))
+        else:
+            candidates.add(f"{normalized}agent")
+
+        matches = [
+            name
+            for name in self._contexts
+            if self._normalize_agent_name(name) in candidates
+        ]
+
+        if not matches:
+            keyword_matches = [
+                name
+                for name in self._contexts
+                if any(
+                    keyword in normalized
+                    for keyword in AGENT_ALIAS_KEYWORDS.get(name, ())
+                )
+            ]
+            if len(keyword_matches) == 1:
+                mapped = keyword_matches[0]
+                logger.info(
+                    "Resolved agent alias by keyword '{}' -> '{}'",
+                    agent_name,
+                    mapped,
+                )
+                return mapped
+            if len(keyword_matches) > 1:
+                raise ValueError(
+                    "Agent alias '{}' is ambiguous (matches: {})".format(
+                        agent_name, ", ".join(sorted(keyword_matches))
+                    )
+                )
+
+        if len(matches) == 1:
+            mapped = matches[0]
+            logger.info("Resolved agent alias '{}' -> '{}'", agent_name, mapped)
+            return mapped
+
+        if len(matches) > 1:
+            raise ValueError(
+                "Agent alias '{}' is ambiguous (matches: {})".format(
+                    agent_name, ", ".join(sorted(matches))
+                )
+            )
+
+        raise ValueError(
+            f"Agent '{agent_name}' not found (neither local nor remote config)"
+        )
+
     def _load_remote_contexts(self, agent_card_dir: str = None) -> None:
         """Load remote agent contexts from JSON config files into _contexts.
 
@@ -357,13 +562,14 @@ class RemoteConnections:
 
         Returns the AgentCard if available from local configs; otherwise None.
         """
+        resolved_agent_name = self._resolve_existing_agent_name(agent_name)
         # Use agent-specific lock to prevent concurrent starts of the same agent
-        agent_lock = self._get_agent_lock(agent_name)
+        agent_lock = self._get_agent_lock(resolved_agent_name)
         logger.info(
-            f"Request to start agent '{agent_name}' (with_listener={with_listener})"
+            f"Request to start agent '{resolved_agent_name}' (with_listener={with_listener})"
         )
         async with agent_lock:
-            ctx = await self._get_or_create_context(agent_name)
+            ctx = await self._get_or_create_context(resolved_agent_name)
 
             # Record listener preferences on the context
             if with_listener:
@@ -442,6 +648,26 @@ class RemoteConnections:
 
     async def _ensure_agent_runtime(self, ctx: AgentContext) -> None:
         """Launch the agent locally if a factory is available."""
+        if ctx.url and _is_url_port_in_use(ctx.url):
+            if await _can_resolve_agent_card_url(ctx.url):
+                logger.info(
+                    "Skipping in-process launch for '{}' because reachable agent already exists at {}",
+                    ctx.name,
+                    ctx.url,
+                )
+                return
+
+            original_url = ctx.url
+            ctx.url = _remap_url_to_available_port(ctx.url)
+            if ctx.local_agent_card:
+                ctx.local_agent_card.url = ctx.url
+            logger.warning(
+                "Port in configured URL is occupied for '{}', remapped runtime URL from {} to {}",
+                ctx.name,
+                original_url,
+                ctx.url,
+            )
+
         # Existing running task: keep as is
         if ctx.agent_task and not ctx.agent_task.done():
             return
@@ -451,7 +677,10 @@ class RemoteConnections:
             try:
                 ctx.agent_task.result()
             except Exception as exc:
-                raise RuntimeError(f"Agent '{ctx.name}' failed during startup") from exc
+                details = _format_exception_causes(exc)
+                raise RuntimeError(
+                    f"Agent '{ctx.name}' failed during startup: {details}"
+                ) from exc
             finally:
                 ctx.agent_task = None
                 ctx.agent_instance = None
@@ -460,6 +689,19 @@ class RemoteConnections:
             agent_instance = await _build_local_agent(ctx)
             if agent_instance is None:
                 return
+            if ctx.url:
+                try:
+                    host, port = parse_host_port(ctx.url, default_scheme="http")
+                    agent_instance.agent_card.url = ctx.url
+                    agent_instance._host = host
+                    agent_instance._port = port
+                except Exception as exc:
+                    logger.warning(
+                        "Unable to apply runtime URL '{}' to in-process agent '{}': {}",
+                        ctx.url,
+                        ctx.name,
+                        exc,
+                    )
             ctx.agent_instance = agent_instance
             logger.info(f"Launching in-process agent '{ctx.name}'")
 
@@ -472,8 +714,9 @@ class RemoteConnections:
                 try:
                     ctx.agent_task.result()
                 except Exception as exc:
+                    details = _format_exception_causes(exc)
                     raise RuntimeError(
-                        f"Agent '{ctx.name}' failed during startup"
+                        f"Agent '{ctx.name}' failed during startup: {details}"
                     ) from exc
                 finally:
                     ctx.agent_task = None
@@ -481,8 +724,9 @@ class RemoteConnections:
 
     async def _initialize_client(self, client: AgentClient, ctx: AgentContext) -> None:
         """Initialize client with retry for local agents."""
-        retries = 3 if ctx.agent_task else 1
-        delay = 0.2
+        retries = 10 if ctx.agent_task else 2
+        delay = 0.25
+        last_error: Exception | None = None
         logger.info(
             f"_initialize_client: initializing client for '{ctx.name}' (retries={retries})"
         )
@@ -494,8 +738,17 @@ class RemoteConnections:
                 )
                 return
             except Exception as exc:
+                last_error = exc
+                if isinstance(ctx.agent_task, asyncio.Task) and ctx.agent_task.done():
+                    try:
+                        ctx.agent_task.result()
+                    except Exception as startup_exc:
+                        details = _format_exception_causes(startup_exc)
+                        raise RuntimeError(
+                            f"Agent '{ctx.name}' failed during startup: {details}"
+                        ) from startup_exc
                 if attempt >= retries - 1:
-                    raise
+                    break
                 logger.debug(
                     "Retrying client initialization for '{}' ({}/{}): {}",
                     ctx.name,
@@ -504,7 +757,17 @@ class RemoteConnections:
                     exc,
                 )
                 await asyncio.sleep(delay)
-                delay = min(delay * 2, 1.0)
+                delay = min(delay * 1.5, 2.0)
+
+        if last_error is None:
+            raise RuntimeError(
+                f"Failed to initialize agent client for '{ctx.name}' for unknown reasons"
+            )
+
+        details = _format_exception_causes(last_error)
+        raise RuntimeError(
+            f"failed to initialize client for '{ctx.name}' after {retries} attempts: {details}"
+        ) from last_error
 
     async def _start_listener(
         self,
@@ -543,9 +806,8 @@ class RemoteConnections:
     ) -> AgentContext:
         """Get an AgentContext for a known agent (from local configs)."""
         # Load remote contexts lazily
-        self._ensure_remote_contexts_loaded()
-
-        ctx = self._contexts.get(agent_name)
+        resolved_agent_name = self._resolve_existing_agent_name(agent_name)
+        ctx = self._contexts.get(resolved_agent_name)
         if ctx:
             return ctx
 
@@ -599,16 +861,21 @@ class RemoteConnections:
 
     async def get_client(self, agent_name: str) -> AgentClient:
         """Get Agent client connection"""
-        ctx = self._contexts.get(agent_name)
+        resolved_agent_name = self._resolve_existing_agent_name(agent_name)
+        ctx = self._contexts.get(resolved_agent_name)
         if not ctx or not ctx.client:
-            await self.start_agent(agent_name)
-            ctx = self._contexts.get(agent_name)
+            await self.start_agent(resolved_agent_name)
+            ctx = self._contexts.get(resolved_agent_name)
         return ctx.client
 
     async def stop_agent(self, agent_name: str):
         """Stop Agent service and associated listener"""
-        await self._cleanup_agent(agent_name)
-        logger.info(f"Stopped agent '{agent_name}' and its listener")
+        try:
+            resolved_agent_name = self._resolve_existing_agent_name(agent_name)
+        except ValueError:
+            return
+        await self._cleanup_agent(resolved_agent_name)
+        logger.info(f"Stopped agent '{resolved_agent_name}' and its listener")
 
     def list_running_agents(self) -> List[str]:
         """List running agents"""
@@ -632,8 +899,11 @@ class RemoteConnections:
 
     def get_agent_card(self, agent_name: str) -> Optional[AgentCard]:
         """Get AgentCard for a known agent from local configs."""
-        self._ensure_remote_contexts_loaded()
-        ctx = self._contexts.get(agent_name)
+        try:
+            resolved_agent_name = self._resolve_existing_agent_name(agent_name)
+        except ValueError:
+            return None
+        ctx = self._contexts.get(resolved_agent_name)
         if not ctx:
             return None
         if ctx.client and ctx.client.agent_card:
@@ -678,6 +948,9 @@ class RemoteConnections:
 
         The flag is read from stored metadata associated with the AgentContext.
         """
-        self._ensure_remote_contexts_loaded()
-        ctx = self._contexts.get(agent_name)
+        try:
+            resolved_agent_name = self._resolve_existing_agent_name(agent_name)
+        except ValueError:
+            return False
+        ctx = self._contexts.get(resolved_agent_name)
         return bool(getattr(ctx, "planner_passthrough", False)) if ctx else False

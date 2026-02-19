@@ -149,6 +149,24 @@
     }
   },
   "chat": {
+    "reasoning": {
+      "thinking": "思考中...",
+      "completed": "思考完成"
+    },
+    "report": {
+      "label": "分析報告",
+      "defaultTitle": "分析報告",
+      "createdAt": "建立時間",
+      "openHint": "點擊查看完整報告"
+    },
+    "tool": {
+      "step": "執行步驟",
+      "unknownTool": "工具調用"
+    },
+    "process": {
+      "title": "執行過程",
+      "count": "{{count}} 個步驟"
+    },
     "input": {
       "placeholder": "輸入訊息..."
     },

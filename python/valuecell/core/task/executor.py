@@ -36,6 +36,19 @@ from valuecell.utils.user_profile_utils import get_user_profile_metadata
 from valuecell.utils.uuid import generate_item_id, generate_task_id, generate_uuid
 
 
+def _format_exception_causes(exc: BaseException, *, limit: int = 5) -> str:
+    """Build a compact exception chain string for diagnostics."""
+    parts: list[str] = []
+    current: BaseException | None = exc
+    depth = 0
+    while current is not None and depth < limit:
+        text = str(current).strip() or current.__class__.__name__
+        parts.append(text)
+        current = current.__cause__
+        depth += 1
+    return " <- ".join(parts)
+
+
 class ScheduledTaskResultAccumulator:
     """Collect streaming output for a scheduled task run."""
 
@@ -184,7 +197,10 @@ class TaskExecutor:
                 ):
                     yield response
             except Exception as exc:  # pragma: no cover - defensive logging
-                error_msg = f"(Error) Error executing {task.task_id}: {exc}"
+                error_details = _format_exception_causes(exc)
+                error_msg = (
+                    f"(Error) Error executing {task.task_id}: {error_details}"
+                )
                 logger.exception(error_msg)
                 failure = self._event_service.factory.task_failed(
                     conversation_id=plan.conversation_id,

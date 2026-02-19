@@ -24,6 +24,7 @@ from .routers.agent_stream import create_agent_stream_router
 from .routers.conversation import create_conversation_router
 from .routers.i18n import create_i18n_router
 from .routers.models import create_models_router
+from .routers.news_subscription import create_news_subscription_router
 from .routers.strategy_api import create_strategy_api_router
 from .routers.system import create_system_router
 from .routers.task import create_task_router
@@ -223,6 +224,9 @@ def _add_routes(app: FastAPI, settings) -> None:
 
     # Include user profile router
     app.include_router(create_user_profile_router(), prefix=API_PREFIX)
+
+    # Include personalized news subscription router
+    app.include_router(create_news_subscription_router(), prefix=API_PREFIX)
 
     # Include agent stream router
     app.include_router(create_agent_stream_router(), prefix=API_PREFIX)

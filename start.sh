@@ -8,6 +8,7 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 FRONTEND_DIR="$SCRIPT_DIR/frontend"
 PY_DIR="$SCRIPT_DIR/python"
+FRONTEND_URL="http://localhost:1420"
 
 BACKEND_PID=""
 FRONTEND_PID=""
@@ -102,7 +103,7 @@ start_backend() {
     return 0
   fi
   info "Starting backend in debug mode (AGENT_DEBUG_MODE=true)..."
-  cd "$PY_DIR" && AGENT_DEBUG_MODE=true uv run python -m valuecell.server.main
+  cd "$PY_DIR" && AGENT_DEBUG_MODE=true API_HOST=127.0.0.1 uv run python -m valuecell.server.main
 }
 
 start_frontend() {
@@ -115,6 +116,21 @@ start_frontend() {
     cd "$FRONTEND_DIR" && bun run dev
   ) & FRONTEND_PID=$!
   info "Frontend PID: $FRONTEND_PID"
+}
+
+open_frontend_in_browser() {
+  info "Opening browser: $FRONTEND_URL"
+  case "$(uname -s)" in
+    Darwin)
+      open "$FRONTEND_URL" >/dev/null 2>&1 || warn "Unable to auto-open browser"
+      ;;
+    Linux)
+      xdg-open "$FRONTEND_URL" >/dev/null 2>&1 || warn "Unable to auto-open browser"
+      ;;
+    *)
+      warn "Auto-open browser not supported on this OS"
+      ;;
+  esac
 }
 
 cleanup() {
@@ -173,8 +189,9 @@ main() {
 
   if (( start_frontend_flag )); then
     start_frontend
+    sleep 5  # Give frontend a moment to start
+    open_frontend_in_browser
   fi
-  sleep 5  # Give frontend a moment to start
 
   if (( start_backend_flag )); then
     start_backend

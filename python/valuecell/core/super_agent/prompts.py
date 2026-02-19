@@ -62,12 +62,16 @@ Output valid JSON only (no markdown, backticks, or comments) and conform to this
 	"decision": "answer" | "handoff_to_planner",
 	"answer_content": "Optional direct answer when decision is 'answer'",
 	"enriched_query": "Optional concise restatement to forward to Planner",
+	"target_agent_name": "Optional preferred specialist agent when handoff_to_planner (e.g., NewsAgent or ResearchAgent)",
 	"reason": "Brief rationale for the decision"
 }
 
 Rules:
 - When decision == "answer": include a short `answer_content` and skip `enriched_query`.
-- When decision == "handoff_to_planner": prefer including `enriched_query` that preserves the user intent.
+- When decision == "handoff_to_planner": include `enriched_query` that preserves the user intent.
+- For handoff cases, set `target_agent_name` whenever intent is clear:
+	- News/current-event intent -> `NewsAgent`
+	- Stock/company fundamental analysis intent -> `ResearchAgent`
 - Keep `reason` short and helpful.
 - Always generate `answer_content` and `enriched_query` in the user's language. Detect language from the user's query if no explicit locale is provided.
 - Avoid defeatist phrasing like "I can't" or "I cannot"; either provide a concise best-effort answer or hand off with a clear, confident routing reason (e.g., "Routing to Planner to select the best specialist agent").

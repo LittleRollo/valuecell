@@ -149,6 +149,24 @@
     }
   },
   "chat": {
+    "reasoning": {
+      "thinking": "Thinking...",
+      "completed": "Thinking"
+    },
+    "report": {
+      "label": "Analysis Report",
+      "defaultTitle": "Analysis Report",
+      "createdAt": "Created at",
+      "openHint": "Click to view full report"
+    },
+    "tool": {
+      "step": "Execution Step",
+      "unknownTool": "Tool Call"
+    },
+    "process": {
+      "title": "Execution Process",
+      "count": "{{count}} steps"
+    },
     "input": {
       "placeholder": "Type your message..."
     },

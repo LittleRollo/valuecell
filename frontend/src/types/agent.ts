@@ -129,6 +129,7 @@ export interface AgentMetadata {
   version: string;
   author: string;
   tags: string[];
+  hidden?: boolean;
 }
 
 export interface AgentInfo {

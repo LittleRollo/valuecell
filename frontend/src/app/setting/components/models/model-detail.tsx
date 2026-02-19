@@ -1,7 +1,7 @@
 import { DialogDescription } from "@radix-ui/react-dialog";
 import { useForm } from "@tanstack/react-form";
 import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import {
@@ -48,6 +48,56 @@ const addModelSchema = z.object({
   model_name: z.string().min(1, "Model name is required"),
 });
 
+const PROVIDER_API_KEYS_STORAGE_KEY = "valuecell-provider-api-keys";
+
+function getProviderApiKeysFromStorage(): Record<string, string> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const raw = window.localStorage.getItem(PROVIDER_API_KEYS_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function getProviderApiKey(provider: string): string {
+  const allKeys = getProviderApiKeysFromStorage();
+  return allKeys[provider] ?? "";
+}
+
+function setProviderApiKey(provider: string, apiKey: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const allKeys = getProviderApiKeysFromStorage();
+  allKeys[provider] = apiKey;
+  window.localStorage.setItem(
+    PROVIDER_API_KEYS_STORAGE_KEY,
+    JSON.stringify(allKeys),
+  );
+}
+
+function removeProviderApiKey(provider: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const allKeys = getProviderApiKeysFromStorage();
+  delete allKeys[provider];
+  window.localStorage.setItem(
+    PROVIDER_API_KEYS_STORAGE_KEY,
+    JSON.stringify(allKeys),
+  );
+}
+
 type ModelDetailProps = {
   provider: string;
 };
@@ -55,9 +105,12 @@ type ModelDetailProps = {
 export function ModelDetail({ provider }: ModelDetailProps) {
   const { t } = useTranslation();
 
-  const { data: providerDetail, isLoading: detailLoading } =
-    useGetModelProviderDetail(provider);
-  const { mutate: updateConfig, isPending: updatingConfig } =
+  const {
+    data: providerDetail,
+    isLoading: detailLoading,
+    refetch: refetchProviderDetail,
+  } = useGetModelProviderDetail(provider);
+  const { mutateAsync: updateConfigAsync, isPending: updatingConfig } =
     useUpdateProviderConfig();
   const { mutate: addModel, isPending: addingModel } = useAddProviderModel();
   const { mutate: deleteModel, isPending: deletingModel } =
@@ -75,6 +128,8 @@ export function ModelDetail({ provider }: ModelDetailProps) {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const hasApiKeyInputChangedRef = useRef(false);
+  const hydratedProvidersRef = useRef<Set<string>>(new Set());
 
   const configForm = useForm({
     defaultValues: {
@@ -86,20 +141,61 @@ export function ModelDetail({ provider }: ModelDetailProps) {
     },
     onSubmit: async ({ value }) => {
       if (!provider) return;
-      updateConfig({
+      const payload: {
+        provider: string;
+        api_key?: string;
+        base_url?: string;
+      } = {
         provider,
-        api_key: value.api_key,
         base_url: value.base_url,
-      });
+      };
+
+      if (hasApiKeyInputChangedRef.current) {
+        const normalizedApiKey = value.api_key.trim();
+
+        if (normalizedApiKey.length > 0) {
+          setProviderApiKey(provider, normalizedApiKey);
+          payload.api_key = normalizedApiKey;
+        } else {
+          removeProviderApiKey(provider);
+          payload.api_key = "";
+        }
+
+        hasApiKeyInputChangedRef.current = false;
+      }
+
+      await updateConfigAsync(payload);
+      await refetchProviderDetail();
     },
   });
 
   useEffect(() => {
     if (providerDetail) {
-      configForm.setFieldValue("api_key", providerDetail.api_key || "");
+      const localApiKey = getProviderApiKey(provider);
+      configForm.setFieldValue("api_key", localApiKey);
       configForm.setFieldValue("base_url", providerDetail.base_url || "");
+
+      if (
+        localApiKey &&
+        !providerDetail.has_api_key &&
+        !hydratedProvidersRef.current.has(provider)
+      ) {
+        hydratedProvidersRef.current.add(provider);
+        void updateConfigAsync({
+          provider,
+          api_key: localApiKey,
+        }).then(() => {
+          void refetchProviderDetail();
+        });
+      }
     }
-  }, [providerDetail, configForm.setFieldValue]);
+  }, [
+    providerDetail,
+    provider,
+    configForm.setFieldValue,
+    updateConfigAsync,
+    refetchProviderDetail,
+  ]);
 
   useEffect(() => {
     if (provider) {
@@ -107,6 +203,29 @@ export function ModelDetail({ provider }: ModelDetailProps) {
       resetCheckResult();
     }
   }, [provider, resetCheckResult]);
+
+  useEffect(() => {
+    return () => {
+      if (!provider || !hasApiKeyInputChangedRef.current) {
+        return;
+      }
+
+      const normalizedApiKey = configForm.state.values.api_key.trim();
+      hasApiKeyInputChangedRef.current = false;
+
+      if (normalizedApiKey.length > 0) {
+        setProviderApiKey(provider, normalizedApiKey);
+      } else {
+        removeProviderApiKey(provider);
+      }
+
+      void updateConfigAsync({
+        provider,
+        api_key: normalizedApiKey,
+        base_url: configForm.state.values.base_url,
+      });
+    };
+  }, [provider, configForm.state.values, updateConfigAsync]);
 
   const addModelForm = useForm({
     defaultValues: {
@@ -195,7 +314,10 @@ export function ModelDetail({ provider }: ModelDetailProps) {
                         id="api_key"
                         placeholder={t("settings.models.enterApiKey")}
                         value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
+                        onChange={(e) => {
+                          hasApiKeyInputChangedRef.current = true;
+                          field.handleChange(e.target.value);
+                        }}
                         onBlur={() => configForm.handleSubmit()}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
@@ -230,9 +352,12 @@ export function ModelDetail({ provider }: ModelDetailProps) {
                       variant={"outline"}
                       disabled={isBusy}
                       onClick={async () => {
+                        await configForm.handleSubmit();
                         await checkAvailability({
                           provider,
                           model_id: providerDetail.default_model_id,
+                          api_key:
+                            configForm.state.values.api_key.trim() || undefined,
                         });
                       }}
                     >

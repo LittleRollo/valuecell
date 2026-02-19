@@ -45,6 +45,7 @@ class ProviderModelEntry(BaseModel):
 
 class ProviderDetailData(BaseModel):
     api_key: Optional[str] = Field(None, description="API key if available")
+    has_api_key: bool = Field(False, description="Whether API key is configured")
     base_url: Optional[str] = Field(None, description="API base URL")
     is_default: bool = Field(..., description="Whether this is the primary provider")
     default_model_id: Optional[str] = Field(None, description="Default model id")

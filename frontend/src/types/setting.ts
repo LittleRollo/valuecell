@@ -14,6 +14,7 @@ export type ProviderModelInfo = {
 
 export type ProviderDetail = {
   api_key: string;
+  has_api_key?: boolean;
   api_key_url: string;
   base_url: string;
   is_default: boolean;
@@ -34,4 +35,26 @@ export type CheckModelResult = {
   model_id: string;
   status?: string;
   error?: string;
+};
+
+export type NewsSubscription = {
+  id: string;
+  user_id: string;
+  name: string;
+  keywords: string[];
+  interval_minutes: number;
+  enabled: boolean;
+  realtime_tracking: boolean;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NewsDelivery = {
+  subscription_id: string;
+  subscription_name: string;
+  keywords: string[];
+  delivered_at: string;
+  content: string;
 };

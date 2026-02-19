@@ -7,11 +7,13 @@ import { useGetStockDetail, useRemoveStockFromWatchlist } from "@/api/stock";
 import TradingViewAdvancedChart from "@/components/tradingview/tradingview-advanced-chart";
 import { Button } from "@/components/ui/button";
 import LinkButton from "@/components/valuecell/button/link-button";
+import { useStockColors } from "@/store/settings-store";
 import type { Route } from "./+types/stock";
 
 function Stock() {
   const { t, i18n } = useTranslation();
   const { resolvedTheme } = useTheme();
+  const stockColors = useStockColors();
   const { stockId } = useParams<Route.LoaderArgs["params"]>();
   const navigate = useNavigate();
   // Use stockId as ticker to fetch real data from API
@@ -91,6 +93,8 @@ function Stock() {
           theme={resolvedTheme === "dark" ? "dark" : "light"}
           locale={i18n.language}
           timezone="UTC"
+          upColor={stockColors.positive}
+          downColor={stockColors.negative}
         />
         {/* )} */}
       </div>

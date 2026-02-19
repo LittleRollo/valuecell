@@ -1,69 +1,142 @@
-# ============================================
-# OpenAI Provider Configuration
-# ============================================
+# OpenAI Provider Configuration - Financial Analysis Optimized
 name: "OpenAI"
 provider_type: "openai"
+enabled: true
 
-enabled: true # Default is true if not specified
-
+# ============================================
 # Connection Configuration
+# ============================================
 connection:
   base_url: "https://api.openai.com/v1"
   api_key_env: "OPENAI_API_KEY"
 
-# Default model if none specified
+# ============================================
+# Model Configuration
+# ============================================
+# Default model for financial analysis: GPT-5 (Most capable for complex reasoning)
 default_model: "gpt-5-2025-08-07"
 
-# Available Models
-models:
+# Financial scenario optimized parameters (Low temperature reduces hallucination)
+defaults:
+  temperature: 0.1              # Financial analysis requires precision, minimize hallucination (original 0.7 recommended)
+  max_tokens: 8192              # Sufficient for detailed financial report analysis and long-form outputs
+  top_p: 0.95
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
 
+# ============================================
+# Available Models
+# ============================================
+models:
+  # Complex Analysis & Long Documents 
   - id: "gpt-5-2025-08-07"
     name: "GPT-5 2025-08-07"
-    context_length: 400000
+    context_length: 400000        # 400K context for extensive financial documents
     max_output_tokens: 128000
-    description: "Most capable GPT-5 model with 400K context window"
-    supported_inputs: ["text"]
-    supported_outputs: ["text"]
-
-  - id: "gpt-5-mini-2025-08-07"
-    name: "GPT-5 Mini 2025-08-07"
-    context_length: 400000
-    max_output_tokens: 128000
-    description: "Lightweight GPT-5 model optimized for efficiency"
+    description: "Most capable GPT-5 model - Primary choice for complex financial analysis, derivatives pricing, and multi-factor investment strategies"
+    capabilities: [advanced_reasoning, complex_analysis, long_context, code_generation]
+    recommended_for:
+      - complex_derivatives_analysis    # Complex derivatives and structured products
+      - quantitative_strategy_dev       # Quantitative strategy development
+      - multi_factor_modeling           # Multi-factor investment modeling
+      - large_portfolio_analysis        # Large portfolio optimization
+      - fundamental_deep_dive           # Deep fundamental analysis
     supported_inputs: ["text"]
     supported_outputs: ["text"]
 
   - id: "gpt-4.1-2025-04-14"
     name: "GPT-4.1 2025-04-14"
-    context_length: 1047576
+    context_length: 1047576       # 1M context window for ultra-long documents
     max_output_tokens: 32768
-    description: "Most capable GPT-4.1 model with 1M context window (without organization verification)"
+    description: "Ultra-long context specialist - Ideal for annual reports, 10-K filings, and comprehensive financial document analysis"
+    capabilities: [ultra_long_context, document_analysis, reasoning]
+    recommended_for:
+      - annual_report_full_analysis     # Complete annual report analysis (100+ pages)
+      - 10k_10q_filings                 # SEC 10-K and 10-Q filing review
+      - prospectus_analysis             # IPO prospectus and offering documents
+      - regulatory_filing_review        # Complex regulatory document review
+      - historical_data_analysis        # Long-term historical financial data
+    supported_inputs: ["text"]
+    supported_outputs: ["text"]
+
+  # Cost-Effective & High-Frequency 
+  - id: "gpt-5-mini-2025-08-07"
+    name: "GPT-5 Mini 2025-08-07"
+    context_length: 400000
+    max_output_tokens: 128000
+    description: "Lightweight GPT-5 - Cost-effective for high-frequency trading signals, routine screening, and real-time monitoring"
+    capabilities: [efficiency, cost_effective, reasoning]
+    recommended_for:
+      - real_time_stock_screening       # Real-time stock screening and alerts
+      - portfolio_monitoring            # Daily portfolio monitoring
+      - routine_data_extraction         # Routine financial data extraction
+      - high_frequency_queries          # High-frequency lightweight queries
+      - cost_sensitive_operations       # Operations requiring cost optimization
     supported_inputs: ["text"]
     supported_outputs: ["text"]
 
 # ============================================
 # Embedding Models Configuration
 # ============================================
+# Vector search for financial document retrieval and semantic analysis
 embedding:
-  # Default embedding model
-  default_model: "text-embedding-3-small"
+  default_model: "text-embedding-3-small"    # Default for general financial documents
   
-  # Default parameters
   defaults:
     encoding_format: "float"
+    dimensions: 1536                          # Standard dimension for text-embedding-3-small
   
-  # Available embedding models
   models:
     - id: "text-embedding-3-small"
       name: "Text Embedding 3 Small"
       dimensions: 1536
       max_input: 8192
       performance_mteb: 62.3
-      description: "Small embedding model with good performance and efficiency"
+      description: "Cost-effective embedding for large-scale financial document retrieval and routine semantic search"
+      capabilities: [cost_effective, document_retrieval, general_purpose]
+      recommended_for:
+        - large_scale_document_indexing     # Large-scale financial document indexing
+        - routine_semantic_search           # Routine semantic search operations
+        - cost_sensitive_embedding          # Cost-sensitive embedding operations
 
     - id: "text-embedding-3-large"
       name: "Text Embedding 3 Large"
       dimensions: 3072
       max_input: 8192
       performance_mteb: 64.6
-      description: "Large embedding model with higher performance"
+      description: "High-precision embedding for nuanced financial entity recognition and fine-grained semantic analysis"
+      capabilities: [high_precision, entity_recognition, semantic_analysis]
+      recommended_for:
+        - financial_entity_recognition      # Precise financial entity extraction
+        - nuanced_semantic_search           # Nuanced semantic similarity
+        - high_accuracy_retrieval           # High-accuracy document retrieval
+
+# ============================================
+# Financial Analysis Presets
+# ============================================
+# Pre-configured settings for specific financial analysis scenarios
+financial_analysis_presets:
+  deep_fundamental_analysis:
+    model: "gpt-5-2025-08-07"              # Most capable model
+    temperature: 0.1
+    max_tokens: 8192
+    system_prompt: "You are a senior financial analyst with expertise in fundamental analysis. Analyze financial statements, valuation metrics, and business models with rigorous accuracy. Always cite specific numbers from the data provided."
+
+  ultra_long_document_review:
+    model: "gpt-4.1-2025-04-14"            # 1M context for lengthy reports
+    temperature: 0.1
+    max_tokens: 32768                      # Max output for comprehensive summaries
+    system_prompt: "You are a financial document specialist. Review lengthy annual reports, 10-K filings, and regulatory documents comprehensively. Extract key financial metrics, risk factors, and management discussions accurately."
+
+  high_frequency_monitoring:
+    model: "gpt-5-mini-2025-08-07"         # Cost-effective for frequent queries
+    temperature: 0.2                       # Slightly higher for speed optimization
+    max_tokens: 4096
+    system_prompt: "You are a real-time financial monitoring assistant. Provide quick, accurate updates on stock prices, portfolio changes, and market movements. Prioritize speed and relevance."
+
+  quantitative_modeling:
+    model: "gpt-5-2025-08-07"              # Strongest reasoning for math
+    temperature: 0.05                      # Extremely low for mathematical precision
+    max_tokens: 8192
+    system_prompt: "You are a quantitative finance specialist. Perform precise calculations for derivatives pricing, risk metrics (VaR, CVaR), and portfolio optimization. Show mathematical reasoning step-by-step."
+

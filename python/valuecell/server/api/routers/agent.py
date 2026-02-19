@@ -36,6 +36,9 @@ def create_agent_router() -> APIRouter:
     )
     async def get_agents(
         enabled_only: bool = Query(False, description="Return only enabled agents"),
+        include_hidden: bool = Query(
+            False, description="Include hidden agents in the response"
+        ),
         name_filter: Optional[str] = Query(
             None, description="Filter agents by name (supports fuzzy matching)"
         ),
@@ -51,7 +54,10 @@ def create_agent_router() -> APIRouter:
         """
         try:
             agent_list_data = AgentService.get_all_agents(
-                db=db, enabled_only=enabled_only, name_filter=name_filter
+                db=db,
+                enabled_only=enabled_only,
+                name_filter=name_filter,
+                exclude_hidden=not include_hidden,
             )
             return SuccessResponse.create(
                 data=agent_list_data,

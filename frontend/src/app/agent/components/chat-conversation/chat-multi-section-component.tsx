@@ -1,5 +1,6 @@
 import { parse } from "best-effort-json-parser";
 import { type FC, memo } from "react";
+import { useTranslation } from "react-i18next";
 import BackButton from "@/components/valuecell/button/back-button";
 import { MarkdownRenderer } from "@/components/valuecell/renderer";
 import { useMultiSection } from "@/provider/multi-section-provider";
@@ -7,16 +8,21 @@ import type { MultiSectionComponentType } from "@/types/agent";
 
 // define different component types and their specific rendering components
 const ReportComponent: FC<{ content: string }> = ({ content }) => {
+  const { t } = useTranslation();
   const { closeSection } = useMultiSection();
   const { title, data } = parse(content);
+  const displayTitle = title || t("chat.report.defaultTitle");
+  const displayData = data || content;
 
   return (
     <>
       <header className="mb-3 flex items-center gap-2">
         <BackButton onClick={closeSection} />
-        <h4 className="font-semibold text-lg">{title}</h4>
+        <h4 className="font-semibold text-lg">{displayTitle}</h4>
       </header>
-      <MarkdownRenderer content={data} />
+      <div className="scroll-container h-[calc(100vh-160px)] rounded-xl border border-border bg-card p-5">
+        <MarkdownRenderer content={displayData} />
+      </div>
     </>
   );
 };

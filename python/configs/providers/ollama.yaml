@@ -1,7 +1,167 @@
-name: Ollama
-provider_type: Ollama
+# Ollama Provider Configuration - Financial Analysis Optimized (Local Deployment)
+# Purpose: Air-gapped financial analysis for sensitive data and privacy compliance
+name: "Ollama"
+provider_type: "ollama"
 enabled: true
-default_model: qwen3:4b
+
+# ============================================
+# Connection Configuration
+# ============================================
+# Local deployment - no internet required after model download
+connection:
+  base_url: "http://localhost:11434"
+  # Ollama typically doesn't require API keys for local access
+  api_key_env: null
+
+# ============================================
+# Model Configuration
+# ============================================
+# Default: Lightweight model for quick analysis (4B parameters, fits most GPUs)
+default_model: "qwen3:4b"
+
+# Financial scenario optimized parameters for local inference
+defaults:
+  temperature: 0.1              # Minimal randomness for financial precision
+  max_tokens: 4096              # Conservative for local GPU memory constraints
+  top_p: 0.95
+  top_k: 40
+  repeat_penalty: 1.1           # Reduce repetition in financial reports
+
+# ============================================
+# Available Models (Download via: ollama pull <model>)
+# ============================================
 models:
-- id: qwen3:4b
-  name: qwen3:4b
+  # Lightweight & Fast (Default) 
+  - id: "qwen3:4b"
+    name: "Qwen3 4B"
+    context_length: 32000
+    description: "Lightweight local model - Suitable for routine financial screening, quick calculations, and privacy-sensitive preliminary analysis on consumer GPUs"
+    capabilities: [local_inference, lightweight, multilingual]
+    recommended_for:
+      - routine_screening             # Daily stock screening and monitoring
+      - quick_calculations            # Rapid financial metric calculations
+      - privacy_sensitive_preview     # Preliminary analysis of sensitive data
+      - consumer_gpu_deployment       # Deployment on RTX 3060/4060 class GPUs
+      - edge_computing                # Branch office or edge deployment
+
+  # Balanced Performance 
+  - id: "llama3.3:70b"
+    name: "Llama 3.3 70B"
+    context_length: 128000
+    description: "High-performance local model - Ideal for comprehensive fundamental analysis and detailed report generation when GPU memory permits"
+    capabilities: [strong_reasoning, local_deployment, comprehensive_analysis]
+    recommended_for:
+      - fundamental_analysis          # Deep company fundamental analysis
+      - detailed_report_generation    # Comprehensive investment reports
+      - portfolio_attribution         # Portfolio performance attribution
+      - institutional_local_use       # Institutional use with data privacy requirements
+      - high_end_gpu_deployment       # Deployment on RTX 4090/A6000 or multi-GPU setups
+
+  # Complex Reasoning (MoE) 
+  - id: "mixtral:8x22b"
+    name: "Mixtral 8x22B (MoE)"
+    context_length: 64000
+    description: "Mixture-of-Experts architecture - Excellent for complex derivative pricing and quantitative modeling with sparse activation efficiency"
+    capabilities: [complex_reasoning, mathematical_modeling, moe_efficiency]
+    recommended_for:
+      - derivative_valuation          # Options and derivatives pricing models
+      - monte_carlo_simulations       # Risk simulation and scenario analysis
+      - quantitative_algorithms       # Quantitative trading algorithm development
+      - complex_formula_calculation   # Complex financial formula derivation
+      - research_prototyping          # Research environment prototyping
+
+  # Long Context Specialist 
+  - id: "qwen2.5:72b"
+    name: "Qwen2.5 72B"
+    context_length: 128000
+    description: "Extended context specialist - Processes lengthy annual reports and regulatory filings without chunking on capable local hardware"
+    capabilities: [long_context, document_processing, bilingual]
+    recommended_for:
+      - full_annual_report_analysis   # Complete annual report ingestion
+      - regulatory_document_review    # Regulatory filing comprehensive review
+      - historical_series_analysis    # Long-term historical data series analysis
+      - multi_document_synthesis      # Synthesis across multiple lengthy documents
+      - china_a_share_analysis        # Chinese financial document analysis (bilingual)
+
+  #  Quantitative/Code Generation 
+  - id: "codellama:70b"
+    name: "CodeLlama 70B"
+    context_length: 16000
+    description: "Code-optimized model - Specialized for quantitative strategy development, backtesting framework coding, and financial data pipeline construction"
+    capabilities: [code_generation, quantitative_dev, backtesting]
+    recommended_for:
+      - strategy_coding               # Trading strategy implementation
+      - backtesting_frameworks        # Backtesting engine development
+      - data_pipeline_construction    # Financial data ETL pipeline building
+      - algorithm_prototyping         # Algorithmic trading prototyping
+      - technical_indicator_lib       # Technical indicator library development
+
+# ============================================
+# Embedding Models Configuration (Local)
+# ============================================
+# Local vector embeddings for RAG without cloud transmission
+embedding:
+  default_model: "nomic-embed-text"    # Default local embedding model
+  
+  defaults:
+    dimensions: 768
+    encoding_format: "float"
+    max_input: 8192
+  
+  models:
+    - id: "nomic-embed-text"
+      name: "Nomic Embed Text"
+      dimensions: 768
+      max_input: 8192
+      description: "Efficient local embedding for financial document retrieval - Runs entirely offline, suitable for sensitive document indexing"
+      capabilities: [local_embedding, privacy_preserving, efficient]
+      recommended_for:
+        - local_document_indexing     # Local financial document vectorization
+        - privacy_preserving_search   # Search without cloud data transmission
+        - offline_rag                 # Offline retrieval-augmented generation
+        - sensitive_data_indexing     # Indexing of confidential financial data
+
+    - id: "mxbai-embed-large"
+      name: "MXBAI Embed Large"
+      dimensions: 1024
+      max_input: 512
+      description: "Higher quality local embedding with larger dimensionality for nuanced financial semantic search when memory permits"
+      capabilities: [high_quality_local, semantic_search]
+      recommended_for:
+        - high_precision_local_search # High-precision semantic search local
+        - nuance_sensitive_retrieval  # Retrieval sensitive to financial nuances
+
+# ============================================
+# Financial Analysis Presets
+# ============================================
+# Optimized settings for common local financial analysis scenarios
+financial_analysis_presets:
+  privacy_first_analysis:
+    model: "qwen3:4b"                   # Lightweight, keeps everything local
+    temperature: 0.1
+    max_tokens: 4096
+    system_prompt: "You are a local financial analysis assistant operating in an air-gapped environment. Analyze sensitive financial data with strict confidentiality. Never suggest sending data to external services."
+
+  comprehensive_local_research:
+    model: "llama3.3:70b"               # Strongest local model for detailed work
+    temperature: 0.1
+    max_tokens: 8192
+    system_prompt: "You are a senior financial analyst working on a secure local system. Conduct thorough fundamental analysis with access to large context windows. Provide detailed investment theses based strictly on provided data."
+
+  quantitative_local_dev:
+    model: "codellama:70b"              # Code generation for quant strategies
+    temperature: 0.05                   # Very low for code precision
+    max_tokens: 8192
+    system_prompt: "You are a quantitative developer working offline. Generate Python code for financial analysis, backtesting, and data processing. Ensure code is efficient and handles edge cases for financial data."
+
+  long_document_local_review:
+    model: "qwen2.5:72b"                # Long context for reports
+    temperature: 0.1
+    max_tokens: 4096
+    system_prompt: "You are a document analysis specialist processing lengthy financial reports locally. Extract key metrics, risks, and opportunities from annual reports and SEC filings without external data transmission."
+
+  complex_calculation_local:
+    model: "mixtral:8x22b"               # MoE for complex math
+    temperature: 0.05
+    max_tokens: 4096
+    system_prompt: "You are a quantitative analyst performing complex calculations locally. Calculate derivatives pricing, risk metrics, and portfolio optimization with mathematical rigor. Show your work step-by-step."

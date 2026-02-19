@@ -14,6 +14,7 @@ from valuecell.core.types import (
     NotifyResponseEvent,
     StreamResponseEvent,
     SubagentConversationPhase,
+    TaskStatusEvent,
 )
 
 
@@ -275,6 +276,46 @@ async def test_execute_plan_emits_end_once_when_on_before_done_used(
                 end_components.append(r)
 
     assert len(end_components) == 1
+
+
+@pytest.mark.asyncio
+async def test_execute_plan_task_failed_contains_nested_causes(
+    monkeypatch: pytest.MonkeyPatch, task_service: TaskService
+):
+    event_service = StubEventService()
+    executor = TaskExecutor(
+        agent_connections=SimpleNamespace(),
+        task_service=task_service,
+        event_service=event_service,
+        conversation_service=StubConversationService(),
+    )
+
+    async def fake_execute_task(_task, _thread_id, _metadata, on_before_done=None):
+        if False:
+            yield  # pragma: no cover
+        try:
+            raise RuntimeError("level-1") from ValueError("level-2")
+        except RuntimeError as exc:
+            raise RuntimeError("level-0") from exc
+
+    monkeypatch.setattr(executor, "execute_task", fake_execute_task)
+
+    task = _make_task(task_id="task-cause")
+    plan = SimpleNamespace(
+        plan_id="plan",
+        conversation_id="conv",
+        user_id="user",
+        guidance_message=None,
+        tasks=[task],
+    )
+
+    responses = [resp async for resp in executor.execute_plan(plan, thread_id="thread")]
+    failed = next(r for r in responses if r.event == TaskStatusEvent.TASK_FAILED)
+    content = failed.data.payload.content  # type: ignore[attr-defined]
+
+    assert "level-0" in content
+    assert "level-1" in content
+    assert "level-2" in content
 
 
 @pytest.mark.asyncio

@@ -29,7 +29,38 @@ class SuperAgentOutcome(BaseModel):
     enriched_query: Optional[str] = Field(
         None, description="Optional concise restatement to forward to Planner"
     )
+    target_agent_name: Optional[str] = Field(
+        None,
+        description="Optional preferred specialist agent name when handing off",
+    )
     reason: Optional[str] = Field(None, description="Brief rationale for the decision")
+
+
+def _infer_target_agent_name(query: str) -> str:
+    """Infer best-fit specialist agent from raw user query.
+
+    Returns `NewsAgent` for news/event-driven intents, otherwise defaults to
+    `ResearchAgent` for equity/company analysis intents.
+    """
+    normalized = (query or "").lower()
+
+    news_keywords = (
+        "news",
+        "headline",
+        "breaking",
+        "hot news",
+        "资讯",
+        "新闻",
+        "快讯",
+        "舆情",
+        "要闻",
+        "最新消息",
+    )
+
+    if any(keyword in normalized for keyword in news_keywords):
+        return "NewsAgent"
+
+    return "ResearchAgent"
 
 
 class SuperAgent:
@@ -140,8 +171,10 @@ class SuperAgent:
             yield SuperAgentOutcome(
                 decision=SuperAgentDecision.HANDOFF_TO_PLANNER,
                 enriched_query=user_input.query,
+                target_agent_name=_infer_target_agent_name(user_input.query),
                 reason="SuperAgent unavailable: missing model/provider configuration",
             )
+            return
 
         try:
             model = agent.model
@@ -172,11 +205,21 @@ class SuperAgent:
                         answer_content=answer_content,
                     )
 
+                if final_outcome.decision == SuperAgentDecision.HANDOFF_TO_PLANNER:
+                    if not final_outcome.enriched_query:
+                        final_outcome.enriched_query = user_input.query
+                    if not final_outcome.target_agent_name:
+                        final_outcome.target_agent_name = _infer_target_agent_name(
+                            user_input.query
+                        )
+
                 yield final_outcome
 
         except Exception as e:
             yield SuperAgentOutcome(
-                decision=SuperAgentDecision.ANSWER,
+                decision=SuperAgentDecision.HANDOFF_TO_PLANNER,
+                enriched_query=user_input.query,
+                target_agent_name=_infer_target_agent_name(user_input.query),
                 reason=(
                     f"SuperAgent encountered an error: {e}."
                     f"Please check the capabilities of your model `{model_description}` and try again later."

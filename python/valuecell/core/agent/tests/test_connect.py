@@ -550,6 +550,53 @@ async def test_unknown_agent_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         await rc.start_agent("NotExist")
 
 
+@pytest.mark.asyncio
+async def test_agent_alias_news_agent_resolves_to_newsagent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    dir_path = tmp_path / "agent_cards"
+    dir_path.mkdir(parents=True)
+
+    card = make_card_dict("NewsAgent", "http://127.0.0.1:8811", push_notifications=False)
+    _write_card(dir_path / "NewsAgent.json", card)
+
+    monkeypatch.setattr(connect_mod, "AgentClient", FakeAgentClient)
+    FakeAgentClient.cards_by_url = {card["url"]: AgentCard.model_validate(card)}
+
+    rc = RemoteConnections()
+    rc.load_from_dir(str(dir_path))
+
+    returned_card = await rc.start_agent("news_agent", with_listener=False)
+    assert returned_card is not None
+    assert returned_card.name == "NewsAgent"
+
+    client = await rc.get_client("news_agent")
+    assert client is not None
+    assert client.agent_card is not None
+    assert client.agent_card.name == "NewsAgent"
+
+
+@pytest.mark.asyncio
+async def test_agent_alias_localized_news_name_resolves_to_newsagent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    dir_path = tmp_path / "agent_cards"
+    dir_path.mkdir(parents=True)
+
+    card = make_card_dict("NewsAgent", "http://127.0.0.1:8812", push_notifications=False)
+    _write_card(dir_path / "NewsAgent.json", card)
+
+    monkeypatch.setattr(connect_mod, "AgentClient", FakeAgentClient)
+    FakeAgentClient.cards_by_url = {card["url"]: AgentCard.model_validate(card)}
+
+    rc = RemoteConnections()
+    rc.load_from_dir(str(dir_path))
+
+    returned_card = await rc.start_agent("财经资讯分析专家", with_listener=False)
+    assert returned_card is not None
+    assert returned_card.name == "NewsAgent"
+
+
 def _write_card(path: Path, card_dict: dict):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(card_dict, f)
@@ -922,6 +969,72 @@ async def test_ensure_agent_runtime_no_factory(monkeypatch: pytest.MonkeyPatch):
 
     await rc._ensure_agent_runtime(ctx)
 
+    assert ctx.agent_instance is None
+    assert ctx.agent_task is None
+
+
+@pytest.mark.asyncio
+async def test_ensure_agent_runtime_skips_when_port_in_use(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    rc = RemoteConnections()
+    ctx = connect_mod.AgentContext(
+        name="PortBusyAgent",
+        url="http://127.0.0.1:10004/",
+        agent_class_spec="valuecell.agents.research_agent.core:ResearchAgent",
+    )
+
+    monkeypatch.setattr(connect_mod, "_is_url_port_in_use", lambda url: True)
+
+    async def _resolvable(_url):
+        return True
+
+    monkeypatch.setattr(connect_mod, "_can_resolve_agent_card_url", _resolvable)
+
+    async def _should_not_be_called(_):
+        raise AssertionError("_build_local_agent should not be called")
+
+    monkeypatch.setattr(connect_mod, "_build_local_agent", _should_not_be_called)
+
+    await rc._ensure_agent_runtime(ctx)
+
+    assert ctx.agent_instance is None
+    assert ctx.agent_task is None
+
+
+@pytest.mark.asyncio
+async def test_ensure_agent_runtime_remaps_url_when_port_in_use_and_not_agent(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    rc = RemoteConnections()
+    original_url = "http://127.0.0.1:10004/"
+    remapped_url = "http://127.0.0.1:11004/"
+    ctx = connect_mod.AgentContext(
+        name="PortBusyRemapAgent",
+        url=original_url,
+        agent_class_spec="valuecell.agents.research_agent.core:ResearchAgent",
+    )
+
+    monkeypatch.setattr(connect_mod, "_is_url_port_in_use", lambda url: True)
+
+    async def _not_resolvable(_url):
+        return False
+
+    monkeypatch.setattr(connect_mod, "_can_resolve_agent_card_url", _not_resolvable)
+    monkeypatch.setattr(
+        connect_mod,
+        "_remap_url_to_available_port",
+        lambda _url: remapped_url,
+    )
+
+    async def _noop(_ctx):
+        return None
+
+    monkeypatch.setattr(connect_mod, "_build_local_agent", _noop)
+
+    await rc._ensure_agent_runtime(ctx)
+
+    assert ctx.url == remapped_url
     assert ctx.agent_instance is None
     assert ctx.agent_task is None
 

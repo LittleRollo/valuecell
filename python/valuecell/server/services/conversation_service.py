@@ -1,5 +1,7 @@
 """Conversation service for managing conversation data."""
 
+import json
+import re
 from typing import Optional
 
 from valuecell.core.conversation import (
@@ -12,6 +14,7 @@ from valuecell.core.conversation.service import (
 )
 from valuecell.core.event.factory import ResponseFactory
 from valuecell.core.types import CommonResponseEvent, ComponentType
+from valuecell.core.types import Role
 from valuecell.server.api.schemas.conversation import (
     AgentScheduledTaskResults,
     AllConversationsScheduledTaskData,
@@ -50,6 +53,68 @@ class ConversationService:
         )
         self.response_factory = ResponseFactory()
 
+    @staticmethod
+    def _is_default_conversation_title(title: str, conversation_id: str) -> bool:
+        normalized = (title or "").strip().lower()
+        if not normalized:
+            return True
+
+        if normalized in {
+            f"conversation {conversation_id.lower()}",
+            f"对话 {conversation_id.lower()}",
+        }:
+            return True
+
+        if normalized.startswith("conversation conv-"):
+            return True
+
+        if normalized.startswith("对话 conv-"):
+            return True
+
+        if re.fullmatch(r"conv-[a-z0-9]+", normalized):
+            return True
+
+        return False
+
+    async def _derive_title_from_first_user_message(
+        self, conversation_id: str
+    ) -> Optional[str]:
+        user_items = await self.conversation_manager.get_items_by_role(
+            conversation_id,
+            Role.USER,
+        )
+        if not user_items:
+            return None
+
+        for item in user_items:
+            payload_raw = item.payload
+            if not payload_raw:
+                continue
+
+            try:
+                payload_obj = json.loads(payload_raw)
+            except Exception:
+                payload_obj = None
+
+            content = ""
+            if isinstance(payload_obj, dict):
+                content = str(payload_obj.get("content") or "").strip()
+            elif isinstance(payload_raw, str):
+                content = payload_raw.strip()
+
+            if not content:
+                continue
+
+            first_line = content.splitlines()[0].strip()
+            if not first_line:
+                continue
+
+            if len(first_line) > 40:
+                return f"{first_line[:40]}..."
+            return first_line
+
+        return None
+
     async def get_conversation_list(
         self, user_id: Optional[str] = None, limit: int = 10, offset: int = 0
     ) -> ConversationListData:
@@ -79,9 +144,17 @@ class ConversationService:
         # Convert to response format
         conversation_items = []
         for conv in conversations:
+            title = conv.title or ""
+            if self._is_default_conversation_title(title, conv.conversation_id):
+                derived_title = await self._derive_title_from_first_user_message(
+                    conv.conversation_id
+                )
+                if derived_title:
+                    title = derived_title
+
             conversation_item = ConversationListItem(
                 conversation_id=conv.conversation_id,
-                title=conv.title or f"Conversation {conv.conversation_id}",
+                title=title or f"Conversation {conv.conversation_id}",
                 agent_name=conv.agent_name,
                 update_time=(
                     conv.updated_at.isoformat()

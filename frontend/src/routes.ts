@@ -6,6 +6,8 @@ import {
   route,
 } from "@react-router/dev/routes";
 
+const isDevelopment = import.meta.env.DEV;
+
 export default [
   index("app/redirect-to-home.tsx"),
 
@@ -33,6 +35,5 @@ export default [
     ]),
   ]),
 
-  // router for test components
-  route("/test", "app/test.tsx"),
+  ...(isDevelopment ? [route("/test", "app/test.tsx")] : []),
 ] satisfies RouteConfig;

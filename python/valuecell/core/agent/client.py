@@ -1,4 +1,5 @@
 from typing import AsyncIterator
+from urllib.parse import urlparse
 
 import httpx
 from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
@@ -38,7 +39,13 @@ class AgentClient:
 
     async def _setup_client(self):
         """Set up the HTTP client and resolve the agent card."""
-        self._httpx_client = httpx.AsyncClient(timeout=30)
+        parsed = urlparse(self.agent_url)
+        host = (parsed.hostname or "").lower()
+        is_loopback = host in {"localhost", "127.0.0.1", "::1"}
+        self._httpx_client = httpx.AsyncClient(
+            timeout=30,
+            trust_env=not is_loopback,
+        )
 
         config = ClientConfig(
             httpx_client=self._httpx_client,
@@ -63,9 +70,10 @@ class AgentClient:
         try:
             self.agent_card = await card_resolver.get_agent_card()
         except Exception as e:
+            details = str(e).strip() or e.__class__.__name__
             raise RuntimeError(
                 "Failed to resolve agent card. Maybe the agent URL is incorrect or the agent is unreachable."
-                " Check the agent logs for more details."
+                f" Check the agent logs for more details. Root cause: {details}"
             ) from e
         self._client = client_factory.create(self.agent_card)
 

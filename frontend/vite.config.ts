@@ -95,5 +95,59 @@ export default defineConfig(async () => ({
           alias: {
             "react-dom/server": "react-dom/server.node",
           },
-        }
+        },
+  build: {
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            return undefined;
+          }
+
+          if (
+            id.includes("node_modules/react/") ||
+            id.includes("node_modules/react-dom/")
+          ) {
+            return "vendor-react";
+          }
+
+          if (
+            id.includes("node_modules/react-router/") ||
+            id.includes("node_modules/@react-router/")
+          ) {
+            return "vendor-router";
+          }
+
+          if (id.includes("node_modules/echarts/")) {
+            return "vendor-echarts";
+          }
+
+          if (
+            id.includes("node_modules/@radix-ui/") ||
+            id.includes("node_modules/lucide-react/")
+          ) {
+            return "vendor-ui";
+          }
+
+          if (
+            id.includes("node_modules/i18next/") ||
+            id.includes("node_modules/react-i18next/")
+          ) {
+            return "vendor-i18n";
+          }
+
+          if (
+            id.includes("node_modules/react-markdown/") ||
+            id.includes("node_modules/remark-gfm/") ||
+            id.includes("node_modules/rehype-raw/")
+          ) {
+            return "vendor-markdown";
+          }
+
+          return "vendor-misc";
+        },
+      },
+    },
+  },
 }));

@@ -1,59 +1,124 @@
-# ============================================
-# Google Provider Configuration
-# ============================================
+# Google Provider Configuration - Financial Analysis Optimized
+# Key Advantage: Multimodal capabilities (PDF, images, charts) for financial reports
 name: "Google"
 provider_type: "google"
+enabled: true
 
-enabled: true # Default is true if not specified
-
+# ============================================
 # Connection Configuration
+# ============================================
 connection:
   base_url: "https://generativelanguage.googleapis.com/v1beta"
   api_key_env: "GOOGLE_API_KEY"
 
-# Default model if none specified
+# ============================================
+# Model Configuration
+# ============================================
+# Default: Gemini 2.5 Flash (Balance of speed, cost, and 1M context)
 default_model: "gemini-2.5-flash"
 
-# Model Parameters Defaults
+# Financial scenario optimized parameters (Low temperature for precision)
 defaults:
-  temperature: 0.7
+  temperature: 0.1              # Financial analysis requires precision, minimize hallucination (original 0.7 reduced)
+  max_tokens: 8192              # Increased for detailed financial report generation
+  top_p: 0.95
+  top_k: 40
 
+# ============================================
 # Available Models
+# ============================================
 models:
+  # High-Performance Analysis (Recommended Default) 
   - id: "gemini-2.5-flash"
     name: "Gemini 2.5 Flash"
-    context_length: 1048576
+    context_length: 1048576       # 1M token context for extensive documents
     max_output_tokens: 65536
-    description: "Fast and efficient Gemini model supporting text, images, video, and audio"
-    supported_inputs: ["text", "images", "video", "audio"]
+    description: "High-efficiency multimodal model - Ideal for rapid analysis of financial reports, charts, and large datasets with 1M context window"
+    capabilities: [multimodal, long_context, fast_inference, cost_effective, chart_analysis]
+    recommended_for:
+      - rapid_financial_screening     # Quick screening of large stock universes
+      - chart_technical_analysis      # K-line chart and technical pattern recognition
+      - annual_report_summarization   # Summarizing lengthy annual reports (100+ pages)
+      - cost_sensitive_analysis       # High-volume cost-sensitive operations
+      - real_time_monitoring          # Real-time portfolio monitoring
+    supported_inputs: ["text", "images", "video", "audio", "pdf"]
     supported_outputs: ["text"]
 
+  # Premium Analysis & Complex Documents 
   - id: "gemini-2.5-pro"
     name: "Gemini 2.5 Pro"
-    context_length: 1048576
+    context_length: 1048576       # 1M token context
     max_output_tokens: 65536
-    description: "Most capable Gemini model supporting audio, images, video, text, and PDF"
-    supported_inputs: ["audio", "images", "video", "text", "pdf"]
+    description: "Most capable multimodal model - Superior for complex financial modeling, scanned document OCR, and detailed investment research with native PDF support"
+    capabilities: [advanced_reasoning, multimodal, document_ocr, complex_analysis, native_pdf]
+    recommended_for:
+      - complex_financial_modeling    # Multi-factor financial modeling and valuation
+      - scanned_document_ocr          # OCR analysis of scanned financial documents
+      - investment_memo_analysis      # Detailed investment memorandum review
+      - earnings_call_transcripts     # Earnings call audio/video analysis
+      - technical_chart_drawing       # Generation of technical analysis charts
+      - sec_filing_pdf_analysis       # Direct analysis of SEC PDF filings (10-K, 10-Q)
+    supported_inputs: ["text", "images", "video", "audio", "pdf"]
     supported_outputs: ["text"]
 
 # ============================================
 # Embedding Models Configuration
 # ============================================
+# Multimodal embeddings supporting financial documents and images
 embedding:
-  # Default embedding model
-  default_model: "gemini-embedding-001"
+  default_model: "gemini-embedding-001"    # Default for financial document and image retrieval
   
-  # Default parameters
   defaults:
-    dimensions: 3072
-    task_type: "RETRIEVAL_DOCUMENT"  # or RETRIEVAL_QUERY depending on use case
+    dimensions: 768                         # Recommended dimension for financial retrieval (balance of accuracy and storage)
+    task_type: "RETRIEVAL_DOCUMENT"         # Optimized for financial document retrieval
   
-  # Available embedding models
   models:
     - id: "gemini-embedding-001"
       name: "Gemini Embedding 001"
-      dimensions: 3072
-      max_input: 2048
+      dimensions: 3072                      # Native dimension
+      max_input: 2048                       # Maximum input tokens
       supported_dimensions: [128, 256, 512, 768, 1024, 1536, 2048, 3072]
-      description: "Google Gemini Embedding Model with flexible dimensions (128-3072, recommended: 768, 1536, 3072)"
+      description: "Multimodal embedding supporting financial documents, charts, and images with flexible dimension reduction (recommended: 768 or 1536 for financial RAG)"
+      capabilities: [multimodal_embedding, dimension_flexible, document_image_support]
+      recommended_for:
+        - financial_document_retrieval    # Retrieval of financial reports and filings
+        - chart_image_search              # Semantic search across chart images
+        - multimodal_rag                  # RAG with mixed text and image content
+        - scalable_vector_storage         # Dimension reduction for large-scale storage (128-768)
+
+# ============================================
+# Financial Analysis Presets
+# ============================================
+# Leveraging multimodal capabilities for financial workflows
+financial_analysis_presets:
+  pdf_annual_report_analysis:
+    model: "gemini-2.5-pro"                # Native PDF support, no conversion needed
+    temperature: 0.1
+    max_tokens: 65536                      # Large output for comprehensive analysis
+    system_prompt: "You are a financial document analyst. Analyze uploaded PDF annual reports directly. Extract key financial metrics, management discussion highlights, and risk factors. Provide specific page references for key findings."
+
+  chart_technical_analysis:
+    model: "gemini-2.5-flash"              # Fast analysis of chart images
+    temperature: 0.1
+    max_tokens: 4096
+    system_prompt: "You are a technical analyst. Analyze provided stock chart images (K-lines, candlesticks, indicators). Identify patterns (head and shoulders, double bottom, etc.), support/resistance levels, and trend directions. Be specific about visual patterns observed."
+
+  earnings_call_multimodal:
+    model: "gemini-2.5-pro"                # Audio + text analysis
+    temperature: 0.15
+    max_tokens: 8192
+    system_prompt: "You are a financial research analyst reviewing earnings call recordings. Analyze both the audio content (tone, sentiment) and any provided presentation slides. Extract forward guidance, management sentiment shifts, and key Q&A topics."
+
+  scanned_document_ocr_analysis:
+    model: "gemini-2.5-pro"                # Superior OCR capabilities
+    temperature: 0.1
+    max_tokens: 4096
+    system_prompt: "You are analyzing scanned financial documents and historical records. Perform OCR on uploaded document images, extract tabular financial data accurately, and reconcile figures across different sections of the document."
+
+  rapid_portfolio_screening:
+    model: "gemini-2.5-flash"              # Cost-effective for high volume
+    temperature: 0.2
+    max_tokens: 2048
+    system_prompt: "You are a portfolio screening assistant. Quickly analyze large datasets of stock metrics. Identify outliers, flag stocks meeting specific criteria, and provide brief rationales. Prioritize speed and coverage over deep analysis."
+
 

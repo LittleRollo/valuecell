@@ -1,5 +1,6 @@
 import { Brain, ChevronDown } from "lucide-react";
 import { type FC, memo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Collapsible,
   CollapsibleContent,
@@ -14,6 +15,7 @@ const ReasoningRenderer: FC<ReasoningRendererProps> = ({
   content,
   isComplete,
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const hasContent = content && content.trim().length > 0;
 
@@ -21,7 +23,7 @@ const ReasoningRenderer: FC<ReasoningRendererProps> = ({
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className={cn("min-w-96 rounded-lg border-gradient p-3")}
+      className={cn("min-w-96 rounded-xl border-gradient bg-card p-3")}
       data-active={isOpen}
     >
       <CollapsibleTrigger
@@ -38,7 +40,9 @@ const ReasoningRenderer: FC<ReasoningRendererProps> = ({
             <Spinner className="size-5" />
           )}
           <p className="text-base leading-5">
-            {isComplete ? "Thinking" : "Thinking..."}
+            {isComplete
+              ? t("chat.reasoning.completed")
+              : t("chat.reasoning.thinking")}
           </p>
         </div>
         {hasContent && (
@@ -57,7 +61,7 @@ const ReasoningRenderer: FC<ReasoningRendererProps> = ({
           {hasContent && (
             <MarkdownRenderer
               content={content}
-              className="text-muted-foreground text-xs"
+              className="text-muted-foreground text-xs leading-5"
             />
           )}
         </div>

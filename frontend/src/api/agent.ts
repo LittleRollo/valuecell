@@ -28,7 +28,10 @@ export const useGetAgentInfo = (params: { agentName: string }) => {
 };
 
 export const useGetAgentList = (
-  params: { enabled_only: string } = { enabled_only: "false" },
+  params: { enabled_only: string; include_hidden?: string } = {
+    enabled_only: "false",
+    include_hidden: "false",
+  },
 ) => {
   const language = useLanguage();
 
@@ -39,7 +42,7 @@ export const useGetAgentList = (
     ]),
     queryFn: () =>
       apiClient.get<ApiResponse<{ agents: AgentInfo[] }>>(
-        `/agents/?enabled_only=${params.enabled_only}&language=${language}`,
+        `/agents/?enabled_only=${params.enabled_only}&include_hidden=${params.include_hidden ?? "false"}&language=${language}`,
       ),
     select: (data) => data.data.agents,
   });

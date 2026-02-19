@@ -153,9 +153,35 @@ async def test_super_agent_lazy_init_failure_handoff_to_planner(
     )
 
     outcomes = [item async for item in sa.run(user_input) if not isinstance(item, str)]
-    assert outcomes and outcomes[-1].decision == SuperAgentDecision.ANSWER
-    assert outcomes[-1].enriched_query is None
-    assert outcomes[-1].reason and "arun" in outcomes[-1].reason
+    assert outcomes and outcomes[-1].decision == SuperAgentDecision.HANDOFF_TO_PLANNER
+    assert outcomes[-1].enriched_query == "please plan"
+    assert outcomes[-1].target_agent_name == "ResearchAgent"
+    assert outcomes[-1].reason and "missing model/provider" in outcomes[-1].reason
+
+
+@pytest.mark.asyncio
+async def test_super_agent_lazy_init_failure_routes_news_query(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """When unavailable, SuperAgent should route news intents to NewsAgent."""
+
+    def _raise(*_args, **_kwargs):
+        raise RuntimeError("no model")
+
+    monkeypatch.setattr(super_agent_mod.model_utils_mod, "get_model_for_agent", _raise)
+    monkeypatch.setattr(super_agent_mod, "agent_debug_mode_enabled", lambda: False)
+
+    sa = SuperAgent()
+
+    user_input = UserInput(
+        query="帮我看看今天A股市场最新新闻",
+        target_agent_name=sa.name,
+        meta=UserInputMetadata(conversation_id="conv-news", user_id="user-news"),
+    )
+
+    outcomes = [item async for item in sa.run(user_input) if not isinstance(item, str)]
+    assert outcomes and outcomes[-1].decision == SuperAgentDecision.HANDOFF_TO_PLANNER
+    assert outcomes[-1].target_agent_name == "NewsAgent"
 
 
 @pytest.mark.asyncio
@@ -192,7 +218,8 @@ async def test_super_agent_malformed_response_unknown_provider(
     )
 
     outcomes = [item async for item in sa.run(user_input) if not isinstance(item, str)]
-    assert outcomes and outcomes[-1].decision == SuperAgentDecision.ANSWER
+    assert outcomes and outcomes[-1].decision == SuperAgentDecision.HANDOFF_TO_PLANNER
     assert outcomes[-1].answer_content is None
+    assert outcomes[-1].target_agent_name == "ResearchAgent"
     assert outcomes[-1].reason is not None
     assert "unknown model/provider" in outcomes[-1].reason

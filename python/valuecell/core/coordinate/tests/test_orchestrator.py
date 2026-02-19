@@ -362,9 +362,9 @@ async def test_sets_conversation_title_on_first_plan(
     async for chunk in orchestrator.process_user_input(sample_user_input):
         out.append(chunk)
 
-    # After planning, title should be set from first task title (fixture: "Auto Title")
+    # With explicit target agent, planner is bypassed and title comes from passthrough task.
     # Inspect final conversation object for title assignment
-    assert conv_created.title == "Auto Title"
+    assert conv_created.title == "Run TestAgent"
 
 
 @pytest.mark.asyncio
@@ -460,6 +460,7 @@ async def test_happy_path_non_streaming(
 async def test_planner_error(
     orchestrator: AgentOrchestrator, sample_user_input: UserInput
 ):
+    sample_user_input.target_agent_name = ""
     orchestrator.plan_service.planner.create_plan.side_effect = RuntimeError(
         "Planning failed"
     )
@@ -537,6 +538,45 @@ async def test_super_agent_answer_short_circuits_planner(
         if getattr(resp, "data", None) and getattr(resp.data, "payload", None)
     ]
     assert any("Concise reply" in content for content in payload_contents)
+
+
+@pytest.mark.asyncio
+async def test_super_agent_handoff_propagates_target_agent(
+    orchestrator: AgentOrchestrator,
+):
+    async def _run(_user_input):
+        yield SuperAgentOutcome(
+            decision=SuperAgentDecision.HANDOFF_TO_PLANNER,
+            enriched_query="给我最新市场新闻并总结",
+            target_agent_name="NewsAgent",
+            reason="Route to specialist",
+        )
+
+    orchestrator.super_agent_service = SimpleNamespace(
+        name="ValueCellAgent",
+        run=_run,
+    )
+
+    captured_target: dict[str, str] = {}
+
+    original_start = orchestrator.plan_service.start_planning_task
+
+    def _capture_start(user_input, thread_id, callback):
+        captured_target["agent"] = user_input.target_agent_name or ""
+        return original_start(user_input, thread_id, callback)
+
+    orchestrator.plan_service.start_planning_task = _capture_start
+
+    user_input = UserInput(
+        query="今天有啥新闻",
+        target_agent_name=orchestrator.super_agent_service.name,
+        meta=UserInputMetadata(conversation_id="conv-handoff", user_id="user-handoff"),
+    )
+
+    async for _ in orchestrator.process_user_input(user_input):
+        pass
+
+    assert captured_target["agent"] == "NewsAgent"
 
 
 @pytest.mark.asyncio

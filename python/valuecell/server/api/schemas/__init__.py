@@ -36,6 +36,14 @@ from .i18n import (
     UserI18nSettingsRequest,
 )
 from .model import CheckModelRequest, CheckModelResponse, LLMModelConfigData
+from .news_subscription import (
+    CreateNewsSubscriptionRequest,
+    NewsDeliveryBatchData,
+    NewsDeliveryData,
+    NewsSubscriptionData,
+    NewsSubscriptionListData,
+    UpdateNewsSubscriptionRequest,
+)
 from .task import TaskCancelData
 from .user_profile import (
     CreateUserProfileRequest,
@@ -119,4 +127,11 @@ __all__ = [
     "LLMModelConfigData",
     "CheckModelRequest",
     "CheckModelResponse",
+    # News subscription schemas
+    "NewsSubscriptionData",
+    "CreateNewsSubscriptionRequest",
+    "UpdateNewsSubscriptionRequest",
+    "NewsSubscriptionListData",
+    "NewsDeliveryData",
+    "NewsDeliveryBatchData",
 ]

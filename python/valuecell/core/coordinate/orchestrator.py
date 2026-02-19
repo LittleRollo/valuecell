@@ -13,6 +13,7 @@ from valuecell.core.super_agent import (
     SuperAgentOutcome,
     SuperAgentService,
 )
+from valuecell.core.super_agent.core import _infer_target_agent_name
 from valuecell.core.task import TaskExecutor
 from valuecell.core.types import (
     BaseResponse,
@@ -359,6 +360,7 @@ class AgentOrchestrator:
                 super_outcome = SuperAgentOutcome(
                     decision=SuperAgentDecision.HANDOFF_TO_PLANNER,
                     enriched_query=user_input.query,
+                    target_agent_name=_infer_target_agent_name(user_input.query),
                     reason="No outcome received from SuperAgent",
                 )
 
@@ -376,8 +378,8 @@ class AgentOrchestrator:
                 return
 
             if super_outcome.decision == SuperAgentDecision.HANDOFF_TO_PLANNER:
-                user_input.target_agent_name = ""
-                user_input.query = super_outcome.enriched_query
+                user_input.target_agent_name = super_outcome.target_agent_name or ""
+                user_input.query = super_outcome.enriched_query or user_input.query
 
         # 2) Planner phase (existing logic)
         # Create planning task with user input callback

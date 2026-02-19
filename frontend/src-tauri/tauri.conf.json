@@ -14,7 +14,8 @@
             "title": "ValueCell",
             "minWidth": 1300,
             "minHeight": 780,
-            "hiddenTitle": true
+            "hiddenTitle": true,
+            "backgroundColor": "#ffffff"
         }],
         "security": {
             "csp": null

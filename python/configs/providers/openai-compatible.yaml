@@ -1,72 +1,135 @@
-# ============================================
-# OpenAI Compatible API Provider Configuration
-# ============================================
-# This configuration supports any OpenAI-compatible API including:
-
-#
-# Usage:
-#   1. Set OPENAI_API_BASE environment variable to your API endpoint
-#   2. Set OPENAI_API_KEY if your service requires authentication
-#   3. Set PRIMARY_PROVIDER=openai-compatible
-#
-# Examples:
-#
-#   # vLLM on remote server
-#   export OPENAI_API_BASE=http://your-vllm-server:8000/v1
-#   export PRIMARY_PROVIDER=openai-compatible
-#
-#   # Together.ai
-#   export OPENAI_API_BASE=https://api.together.xyz/v1
-#   export OPENAI_API_KEY=your-together-api-key
-#   export PRIMARY_PROVIDER=openai-compatible
-
+# OpenAI-Compatible Provider Configuration - Financial Analysis Optimized
+# Supports: vLLM, Ollama, Together.ai, or any OpenAI-compatible API endpoint
 name: "OpenAI-Compatible"
 provider_type: "openai-compatible"
-
 enabled: true
 
+# ============================================
 # Connection Configuration
+# ============================================
+# Configure your endpoint via environment variables:
+#   OPENAI_COMPATIBLE_BASE_URL=http://your-server:8000/v1
+#   OPENAI_COMPATIBLE_API_KEY=your-api-key (if required)
 connection:
-  # Use environment variable with fallback to local Ollama
   base_url: "${OPENAI_COMPATIBLE_BASE_URL:http://localhost:11434/v1}"
   api_key_env: "OPENAI_COMPATIBLE_API_KEY"
 
-# Default model if agents.yaml specified
-# Example: qwen3-max
+# ============================================
+# Model Configuration
+# ============================================
+# Default model for financial analysis
+# Adjust based on your deployed model (e.g., qwen3-max, llama3.3-70b, etc.)
 default_model: "qwen3-max"
 
-# Model Parameters Defaults
+# Financial scenario optimized parameters
 defaults:
-  temperature: 0.7
-  max_tokens: 4096
+  temperature: 0.1              # Financial analysis requires precision, reduce hallucination (original 0.7 was too high)
+  max_tokens: 8192              # Sufficient for detailed financial report generation and analysis
+  top_p: 0.95
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
 
-# Available Models (examples - adjust based on your provider model id)
+# ============================================
+# Available Models
+# ============================================
+# Configure based on your local deployment or remote API
+# Below are examples for common financial analysis models
 models:
+  # Local/Private Deployment (vLLM/Ollama) 
   - id: "qwen3-max"
     name: "Qwen3 Max"
     context_length: 256000
-    description: "Qwen3 Max model"
-  
+    description: "Primary choice for financial analysis - Strong reasoning capabilities suitable for stock analysis and report interpretation"
+    capabilities: [financial_analysis, reasoning, multilingual]
+    recommended_for:
+      - fundamental_analysis          # Company fundamental analysis
+      - financial_report_reading      # Annual/quarterly report interpretation
+      - risk_assessment               # Portfolio risk evaluation
+      - chinese_market_analysis       # China A-shares analysis (if multilingual)
+
+  - id: "llama3.3-70b"
+    name: "Llama 3.3 70B"
+    context_length: 128000
+    description: "Cost-effective local deployment - Suitable for routine financial data processing and batch analysis"
+    capabilities: [local_deployment, cost_effective, general_analysis]
+    recommended_for:
+      - batch_data_processing         # Batch processing of financial datasets
+      - local_privacy_sensitive       # On-premise analysis for data privacy
+      - cost_conscious_operations     # Operations where API costs must be minimized
+
+  - id: "mixtral-8x22b"
+    name: "Mixtral 8x22B"
+    context_length: 64000
+    description: "MoE architecture for complex reasoning - Excellent for derivative pricing and complex financial modeling"
+    capabilities: [complex_reasoning, mathematical_modeling, moe]
+    recommended_for:
+      - derivative_pricing            # Options and derivatives valuation
+      - monte_carlo_simulations       # Risk simulation and modeling
+      - complex_calculations          # Complex financial formula calculations
+
+  # Remote API Examples (Together.ai, etc.) 
+  - id: "together-llama3-70b"
+    name: "Together Llama 3 70B"
+    context_length: 8000
+    description: "Remote high-performance model - Suitable for high-accuracy financial analysis via API"
+    capabilities: [high_accuracy, api_based]
+    recommended_for:
+      - institutional_grade_analysis  # Professional-grade investment analysis
+      - real_time_market_data         # Real-time market analysis integration
 
 # ============================================
 # Embedding Models Configuration
 # ============================================
-# Note: Embedding support depends on your provider
-
-# Example: text-embedding-v4
+# Vector search for financial document retrieval (RAG)
 embedding:
-  # Default embedding model
-  default_model: "text-embedding-v4"
+  default_model: "text-embedding-v4"    # Default embedding for financial documents
   
-  # Default parameters
   defaults:
     dimensions: 2048
     encoding_format: "float"
+    max_input: 8192
   
-  # Available embedding models
   models:
     - id: "text-embedding-v4"
       name: "Text Embedding V4"
       dimensions: 2048
       max_input: 8192
-      description: "Text Embedding V4 model"
+      description: "General purpose embedding suitable for financial document retrieval and semantic search"
+      capabilities: [document_retrieval, semantic_search]
+    
+    - id: "bge-m3"
+      name: "BGE M3"
+      dimensions: 1024
+      max_input: 8192
+      description: "Multilingual embedding optimized for Chinese-English mixed financial reports (if available)"
+      capabilities: [multilingual, chinese_english, financial_domain]
+
+# ============================================
+# Financial Analysis Presets
+# ============================================
+# Pre-configured settings for common financial tasks
+financial_analysis_presets:
+  local_privacy_analysis:
+    model: "llama3.3-70b"              # Local deployment for data privacy
+    temperature: 0.1
+    max_tokens: 4096
+    system_prompt: "You are a local financial analysis assistant. Analyze sensitive financial data with strict confidentiality. Do not transmit data externally."
+
+  complex_modeling_local:
+    model: "mixtral-8x22b"             # MoE model for complex calculations
+    temperature: 0.05                   # Maximum precision for quantitative models
+    max_tokens: 8192
+    system_prompt: "You are a quantitative finance specialist. Perform precise mathematical calculations for derivatives, risk models, and portfolio optimization. Show your reasoning step-by-step."
+
+  general_financial_qa:
+    model: "qwen3-max"                 # Default balanced option
+    temperature: 0.1
+    max_tokens: 4096
+    system_prompt: "You are a professional financial analyst. Provide accurate, data-driven insights on stocks, markets, and financial reports. Always cite specific numbers and metrics when available."
+
+  high_volume_batch:
+    model: "llama3.3-70b"              # Cost-effective for bulk processing
+    temperature: 0.2
+    max_tokens: 2048
+    system_prompt: "Efficiently process financial data in bulk. Extract key metrics, flag anomalies, and summarize trends concisely."
+

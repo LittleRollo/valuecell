@@ -1,64 +1,149 @@
-# ============================================
-# OpenRouter Provider Configuration
-# ============================================
-name: "OpenRouter"
-provider_type: "openrouter"
+# OpenRouter Configuration - Financial Analysis Optimized
+name: OpenRouter
+provider_type: openrouter
+enabled: true
 
-enabled: true # Default is true if not specified
-
-# Connection Configuration
 connection:
-  base_url: "https://openrouter.ai/api/v1"
-  api_key_env: "OPENROUTER_API_KEY"
+  base_url: https://openrouter.ai/api/v1
+  api_key_env: OPENROUTER_API_KEY
 
-# Default model if none specified
-default_model: "qwen/qwen3-max"
+# Default model for financial analysis: Claude Haiku 4.5 (Balance of speed, cost, and accuracy)
+# Alternative: Use anthropic/claude-3.5-sonnet for higher accuracy, or google/gemini-3-pro-preview for complex reasoning
+default_model: anthropic/claude-haiku-4.5
 
-# Model Parameters Defaults
+# Financial scenario optimized parameters (Low temperature reduces hallucination, moderate token limit for analysis)
 defaults:
-  temperature: 0.5
+  temperature: 0.1              # Financial analysis requires precision, reduce randomness (original 0.5 was too high)
+  max_tokens: 8192              # Sufficient for detailed financial report analysis
+  top_p: 0.95
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
 
-# Extra headers for OpenRouter API
+# OpenRouter specific headers for identification
 extra_headers:
-  HTTP-Referer: "https://valuecell.ai"
-  X-Title: "ValueCell"
+  HTTP-Referer: https://valuecell.ai
+  X-Title: ValueCell
 
-# Available Models (commonly used)
+# Model inventory categorized
 models:
-  - id: "anthropic/claude-haiku-4.5"
-    name: "Claude Haiku 4.5"
-  - id: "x-ai/grok-4"
-    name: "Grok 4"
-  - id: "qwen/qwen3-max"
-    name: "Qwen3 Max"
-  - id: "openai/gpt-5"
-    name: "GPT-5"
-  - id: "google/gemini-2.5-flash"
-    name: "Gemini 2.5 Flash"
-  - id: "google/gemini-3-pro-preview"
-    name: "Gemini 3 Pro Preview"
-  - id: "x-ai/grok-4.1-fast"
-    name: "Grok 4.1 Fast"
 
-# ============================================
-# Embedding Models Configuration
-# ============================================
-# OpenRouter provides embedding models
+  # Financial Analysis Dedicated (Recommended) 
+  - id: anthropic/claude-haiku-4.5
+    name: Claude Haiku 4.5
+    description: Primary choice for real-time financial analysis - Fast response, cost-effective, suitable for stock screening and quick market analysis
+    context_length: 200000
+    capabilities: [financial_analysis, reasoning, speed]
+    recommended_for:
+      - real_time_stock_screening       # Real-time stock screening
+      - quick_market_analysis           # Quick market analysis
+      - portfolio_monitoring            # Portfolio monitoring
+      - high_frequency_queries          # High-frequency query scenarios
+
+  - id: x-ai/grok-4
+    name: Grok 4
+    description: Real-time data integration - Excellent for latest market news and X (Twitter) sentiment analysis, suitable for event-driven trading
+    context_length: 131072
+    capabilities: [real_time_data, sentiment_analysis, news_integration]
+    recommended_for:
+      - news_trading                    # News-based trading strategies
+      - sentiment_analysis              # Market sentiment analysis
+      - social_media_monitoring         # Social media trend monitoring
+      - event_driven_analysis           # Event-driven market analysis
+
+  - id: x-ai/grok-4.1-fast
+    name: Grok 4.1 Fast
+    description: High-speed inference - Optimized for low-latency trading signals and real-time alerts
+    context_length: 131072
+    capabilities: [high_speed, real_time]
+    recommended_for:
+      - algorithmic_trading             # Algorithmic trading signals
+      - real_time_alerts                # Real-time market alerts
+      - latency_sensitive_operations    # Latency-sensitive operations
+
+  # Complex Analysis & Reasoning 
+  - id: google/gemini-3-pro-preview
+    name: Gemini 3 Pro Preview
+    description: Advanced reasoning for complex financial modeling - Suitable for derivatives pricing, risk models, and multi-factor analysis
+    context_length: 1000000          # 1M context for large documents
+    capabilities: [complex_reasoning, long_context, mathematical_modeling]
+    recommended_for:
+      - complex_derivatives_pricing     # Complex derivatives pricing
+      - risk_model_calculation          # Risk model calculations
+      - multi_factor_analysis           # Multi-factor investment analysis
+      - large_document_analysis         # Ultra-large financial document analysis
+
+  - id: openai/gpt-5
+    name: GPT-5
+    description: Next-generation general purpose - Advanced financial reasoning and code generation for quantitative strategies (when available)
+    context_length: 256000
+    capabilities: [advanced_reasoning, code_generation, general_purpose]
+    recommended_for:
+      - quantitative_strategy_dev       # Quantitative strategy development
+      - complex_financial_modeling      # Complex financial modeling
+      - cross_domain_analysis           # Cross-domain financial analysis
+
+  # Cost-Effective & Fast Processing 
+  - id: google/gemini-2.5-flash
+    name: Gemini 2.5 Flash
+    description: High-efficiency processing - Cost-effective for batch processing of financial data and preliminary screening
+    context_length: 1000000
+    capabilities: [high_efficiency, cost_effective, batch_processing]
+    recommended_for:
+      - batch_data_processing           # Batch financial data processing
+      - preliminary_screening           # Preliminary stock screening
+      - cost_sensitive_operations       # Cost-sensitive operations
+      - document_summarization          # Financial document summarization
+
+  - id: qwen/qwen3-max
+    name: Qwen3 Max
+    description: Strong multilingual capabilities - Excellent for Chinese financial markets (A-shares, Hong Kong stocks) and bilingual reports
+    context_length: 32000
+    capabilities: [multilingual, chinese_market, reasoning]
+    recommended_for:
+      - chinese_equity_analysis         # China A-shares and Hong Kong stock analysis
+      - bilingual_report_processing     # Bilingual financial report processing
+      - asia_pacific_markets            # Asia-Pacific market analysis
+      - chinese_regulatory_analysis     # Chinese regulatory document analysis
+
+# Vector embedding configuration (Financial document retrieval)
 embedding:
-  # Default embedding model
-  default_model: "qwen/qwen3-embedding-4b"
-
-  # Default parameters
+  default_model: qwen/qwen3-embedding-4b    # Multilingual embedding suitable for Chinese-English mixed financial documents
   defaults:
     dimensions: 2560
-    encoding_format: "float"
-
-  # Available embedding models
-  models:
-  - id: "qwen/qwen3-embedding-4b"
-    name: "Qwen3 Embedding 4B"
-    dimensions: 2560
+    encoding_format: float
     max_input: 32768
-    description: "Qwen3 Embedding Model"
 
+  models:
+    - id: qwen/qwen3-embedding-4b
+      name: Qwen3 Embedding 4B
+      dimensions: 2560
+      max_input: 32768
+      description: Multilingual embedding model optimized for Chinese-English mixed financial documents and Asian market content
+      capabilities: [multilingual, chinese_english, financial_domain]
+
+# Recommended configuration for financial analysis scenarios
+financial_analysis_presets:
+  real_time_trading:
+    model: x-ai/grok-4.1-fast              # Lowest latency
+    temperature: 0.05                      # Maximum precision
+    max_tokens: 2048
+    system_prompt: "You are a high-frequency trading assistant. Provide concise, accurate market data and trading signals without speculation."
+
+  deep_research_report:
+    model: google/gemini-3-pro-preview     # Strongest reasoning
+    temperature: 0.1
+    max_tokens: 8192
+    system_prompt: "You are a senior financial analyst. Conduct thorough fundamental analysis with strict adherence to data accuracy. Cite specific financial metrics."
+
+  china_a_share_analysis:
+    model: qwen/qwen3-max                  # Optimized for Chinese content
+    temperature: 0.1
+    max_tokens: 4096
+    system_prompt: "You are an expert in China A-share markets. Analyze Chinese financial reports, regulatory filings, and market sentiment with native-level understanding."
+
+  cost_efficient_screening:
+    model: google/gemini-2.5-flash         # Most cost-effective
+    temperature: 0.2
+    max_tokens: 2048
+    system_prompt: "Perform efficient preliminary screening of financial data. Flag anomalies and highlight key metrics for further review."
 
